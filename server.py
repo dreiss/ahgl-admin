@@ -3,6 +3,7 @@ import sys
 import os
 import contextlib
 import logging
+import re
 import cgi
 import hashlib
 import collections
@@ -19,7 +20,7 @@ def app(environ, start_response):
   is_nfsn = "NFSN_SITE_ROOT" in environ
   if is_nfsn:
     work_path = "/home/protected/ahgl_pre"
-    request_uri = environ["REQUEST_URI"]
+    request_uri = re.sub(r'\?.*', '', environ["REQUEST_URI"])
   else:
     work_path = "./data"
     request_uri = environ["PATH_INFO"]
@@ -216,7 +217,7 @@ def app(environ, start_response):
         return ["Invalid team"]
 
     with contextlib.closing(db.cursor()) as cursor:
-      cursor.execute("SELECT COUNT(*) FROM lineup WHERE team = ?", (team,))
+      cursor.execute("SELECT COUNT(*) FROM lineup WHERE team = ? AND week = ?", (team, week_number))
       if list(cursor) != [(0,)]:
         return ["Lineup already submitted"]
 
@@ -343,15 +344,16 @@ def app(environ, start_response):
     winners = {}
 
     for setnum in range(1, 5+1):
-      winner = postdata.getlist("winner_%d" % setnum)
+      winner = postdata.getfirst("winner_%d" % setnum, "none")
       if sum_home >= 3 or sum_away >= 3:
-        if setnum == 5 and winner != ["none"]:
+        if setnum == 5 and winner != "none":
           return ["You played the ace match after one team won?"]
+        winners[setnum] = (0, 0)
         continue
-      if winner == ["home"]:
+      if winner == "home":
         winners[setnum] = (1, 0)
         sum_home += 1
-      elif winner == ["away"]:
+      elif winner == "away":
         winners[setnum] = (0, 1)
         sum_away += 1
       else:
@@ -381,8 +383,7 @@ def app(environ, start_response):
 
     rephashes = {}
 
-    for setnum in range(1, num_sets+1):
-      winner = postdata.getfirst("winner_%d" % setnum)
+    for setnum in range(1, 5+1):
       rep = postdata.getfirst("replay_%d" % setnum)
       if not rep:
         continue
@@ -393,7 +394,7 @@ def app(environ, start_response):
           handle.write(rep)
       rephashes[setnum] = rephash
 
-    for setnum in range(1, num_sets+1):
+    for setnum in range(1, 5+1):
       forfeit = 1 if postdata.getfirst("forfeit_%d" % setnum) == "on" else 0
       wins = winners[setnum]
       db.cursor().execute(
