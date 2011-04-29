@@ -7,6 +7,7 @@ import re
 import cgi
 import hashlib
 import collections
+import errno
 
 def open_db(path):
   import sqlite3
@@ -539,6 +540,21 @@ def app(environ, start_response):
           </body>
         </html>
         """]
+
+  elif "/replay/" in request_uri:
+    match = re.search(r'/replay/([0-9a-f]{40})/', request_uri)
+
+    try:
+      handle = open(os.path.join(work_path, match.group(1) + ".SC2Replay"), "rb")
+    except IOError as err:
+      if err.errno != errno.ENOENT:
+        raise
+      start_response("200 OK", [("Content-type", "text/plain")])
+      return ["404"]
+
+    with handle:
+      start_response("200 OK", [("Content-type", "application/octet-stream")])
+      return [handle.read()]
 
   else:
     start_response("404 Not Found", [("Content-type", "text/plain")])
