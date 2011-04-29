@@ -377,7 +377,7 @@ def app(environ, start_response):
           replayhash = results[match][setnum][3]
           def cleanit(word):
             return re.sub("[^a-zA-Z0-9]", "", word)
-          replaylink = "/aghl/replay/%s/%s-%s_%d_%s-%s.SC2Replay" % (
+          replaylink = "/ahgl/replay/%s/%s-%s_%d_%s-%s.SC2Replay" % (
               replayhash, cleanit(teams[home]), cleanit(teams[away]), setnum, cleanit(homeplayer[0]), cleanit(awayplayer[0]))
           result_displays.append(" -- <a href=\"%s\">replay</a>" % cgi.escape(replaylink, True))
 
