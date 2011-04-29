@@ -46,6 +46,7 @@ def app(environ, start_response):
             <ul>
               <li><a href="/ahgl/show-lineup">Show Lineup</a>
               <li><a href="/ahgl/enter-lineup">Enter Lineup</a>
+              <li><a href="/ahgl/show-result">Show result</a>
               <li><a href="/ahgl/enter-result">Enter Result</a>
             </ul>
           </body>
@@ -252,6 +253,124 @@ def app(environ, start_response):
           </body>
         </html>
         """]
+
+  elif request_uri.endswith("/show-result"):
+    db = open_db(db_path)
+
+    start_response("200 OK", [("Content-type", "text/html")])
+
+    getdata = cgi.FieldStorage(
+        fp=environ['wsgi.input'],
+        environ=environ,
+    )
+
+    week = None
+    try:
+      week = int(getdata.getfirst("week"))
+    except (ValueError, TypeError):
+      pass
+
+    if not week:
+      with contextlib.closing(db.cursor()) as cursor:
+        cursor.execute("SELECT DISTINCT week FROM maps ORDER BY week")
+        weeks = [ int(row[0]) for row in cursor ]
+
+      return ["""
+        <html>
+          <head>
+            <title>AHGL Select Result Week</title>
+          </head>
+          <body>
+          """] + [
+              "<a href=\"?week=%d\">Week %d</a><br>" % (wk, wk)
+              for wk in weeks
+          ] + ["""
+          </body>
+        </html>
+      """]
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT id, name FROM teams")
+      teams = dict(cursor)
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT match_number, home_team, away_team FROM matches WHERE week = ?", (week,))
+      matches = dict((row[0], (row[1], row[2])) for row in cursor)
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week,))
+      maps = dict((row[0], row[1]) for row in cursor)
+
+    lineups = collections.defaultdict(dict)
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT team, set_number, player, race FROM lineup WHERE week = ?", (week,))
+      for (team, set_number, player, race) in cursor:
+        lineups[team][set_number] = (player, race)
+
+    results = collections.defaultdict(dict)
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT match_number, set_number, home_winner, away_winner, forfeit, replay_hash FROM set_results WHERE week = ?", (week,))
+      for (match_number, set_number, home_winner, away_winner, forfeit, replay_hash) in cursor:
+        results[match_number][set_number] = (home_winner, away_winner, forfeit, replay_hash)
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT match_number, home_player, away_player FROM ace_matches WHERE week = ?", (week,))
+      aces = dict((row[0], (row[1], row[2])) for row in cursor)
+
+    result_displays = []
+    for (match, (home, away)) in sorted(matches.items()):
+      result_displays.append("<h2>Match %d: %s vs %s</h2>"
+          % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
+      if not results[match]:
+        result_displays.append("No result entered")
+        continue
+      elif not lineups[matches[match][0]] or not lineups[matches[match][1]]:
+        result_displays.append("Missing lineup")
+        continue
+
+      for setnum in range(1,5+1):
+        result_displays.append(
+            "Game %d (%s): " % (setnum, cgi.escape(maps[setnum])))
+        win_tuple = (results[match][setnum][0], results[match][setnum][1])
+        if not sum(win_tuple):
+          result_displays.append("Not played<br>")
+          continue
+        if setnum == 5:
+          homeplayer = aces[match][0]
+          awayplayer = aces[match][1]
+        else:
+          homeplayer = lineups[home][setnum]
+          awayplayer = lineups[away][setnum]
+        win_arrows = {(1,0): ">", (0,1): "<"}
+        win_arrow = win_arrows[win_tuple]
+        result_displays.append("%s (%s) %s (%s) %s"
+            % tuple(cgi.escape(val) for val in (homeplayer[0], homeplayer[1], win_arrow, awayplayer[1], awayplayer[0])))
+
+        if results[match][setnum][2]:
+          result_displays.append(" -- forfeit")
+        elif not results[match][setnum][3]:
+          result_displays.append(" -- no replay")
+        else:
+          replayhash = results[match][setnum][3]
+          def cleanit(word):
+            return re.sub("[^a-zA-Z0-9]", "", word)
+          replaylink = "/aghl/replay/%s/%s-%s_%d_%s-%s.SC2Replay" % (
+              replayhash, cleanit(teams[home]), cleanit(teams[away]), setnum, cleanit(homeplayer[0]), cleanit(awayplayer[0]))
+          result_displays.append(" -- <a href=\"%s\">replay</a>" % cgi.escape(replaylink, True))
+
+        result_displays.append("<br>")
+
+    return [("""
+      <html>
+        <head>
+          <title>AHGL Result</title>
+        </head>
+        <body>
+          <h1>AHGL Result Week %d<h1>
+          %s
+        </body>
+      </html>
+    """ % (week, "".join(result_displays))).encode()]
 
   elif request_uri.endswith("/enter-result"):
     db = open_db(db_path)
