@@ -149,7 +149,16 @@ def app(environ, start_response):
 
     values = {}
 
+    getdata = cgi.FieldStorage(
+        fp=environ['wsgi.input'],
+        environ=environ,
+    )
+
     week_number = 3
+    try:
+      week_number = int(getdata.getfirst("week"))
+    except (ValueError, TypeError):
+      pass
     values["week_number"] = week_number
 
     with contextlib.closing(db.cursor()) as cursor:
@@ -180,6 +189,7 @@ def app(environ, start_response):
             <h1>AHGL Lineup Entry</h1>
             <h2>Week %(week_number)d</h2>
             <form method="POST" action="/ahgl/submit-lineup">
+              <input type="hidden" name="week" value="%(week_number)d" />
               <select name="team">
               %(team_options)s
               </select>
@@ -195,15 +205,22 @@ def app(environ, start_response):
   elif request_uri.endswith("/submit-lineup"):
     start_response("200 OK", [("Content-type", "text/html")])
 
-    week_number = 3
-
     db = open_db(db_path)
 
     postdata = cgi.FieldStorage(
         fp=environ['wsgi.input'],
         environ=environ,
     )
-    
+
+    week_number = postdata.getlist("week")
+    if len(week_number) != 1 or not week_number[0]:
+      return ["No value submitted for 'week'"]
+    week_number = week_number[0]
+    try:
+      week_number = int(week_number)
+    except ValueError:
+      return ["Invalid week"]
+
     team = postdata.getlist("team")
     if len(team) != 1 or not team[0]:
       return ["No value submitted for 'team'"]
@@ -217,6 +234,11 @@ def app(environ, start_response):
       cursor.execute("SELECT name FROM teams WHERE id = ?", (team,))
       if len(list(cursor)) != 1:
         return ["Invalid team"]
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT DISTINCT week FROM maps WHERE week = ?", (week_number,))
+      if len(list(cursor)) != 1:
+        return ["Invalid week"]
 
     with contextlib.closing(db.cursor()) as cursor:
       cursor.execute("SELECT COUNT(*) FROM lineup WHERE team = ? AND week = ?", (team, week_number))
@@ -378,9 +400,18 @@ def app(environ, start_response):
 
     start_response("200 OK", [("Content-type", "text/html")])
 
-    week_number = 2
     values = {}
 
+    getdata = cgi.FieldStorage(
+        fp=environ['wsgi.input'],
+        environ=environ,
+    )
+
+    week_number = 2
+    try:
+      week_number = int(getdata.getfirst("week"))
+    except (ValueError, TypeError):
+      pass
     values["week_number"] = week_number
 
     with contextlib.closing(db.cursor()) as cursor:
@@ -425,6 +456,7 @@ def app(environ, start_response):
             <h1>AHGL Result Entry</h1>
             <h2>Week %(week_number)d</h2>
             <form enctype="multipart/form-data" method="POST" action="/ahgl/submit-result">
+              <input type="hidden" name="week" value="%(week_number)d" />
               <select name="match">
               %(match_options)s
               </select>
@@ -448,6 +480,16 @@ def app(environ, start_response):
         fp=environ['wsgi.input'],
         environ=environ,
     )
+
+    week_number = postdata.getlist("week")
+    if len(week_number) != 1 or not week_number[0]:
+      return ["No value submitted for 'week'"]
+    week_number = week_number[0]
+    try:
+      week_number = int(week_number)
+    except ValueError:
+      return ["Invalid week"]
+
 
     match = postdata.getlist("match")
     if len(match) != 1 or not match[0]:
@@ -490,6 +532,11 @@ def app(environ, start_response):
         return ["No away ace specified."]
 
     db = open_db(db_path)
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT DISTINCT week FROM maps WHERE week = ?", (week_number,))
+      if len(list(cursor)) != 1:
+        return ["Invalid week"]
 
     with contextlib.closing(db.cursor()) as cursor:
       cursor.execute("SELECT COUNT(*) FROM matches WHERE week = ? AND match_number = ?", (week_number, match))
