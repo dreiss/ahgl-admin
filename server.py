@@ -337,8 +337,8 @@ def app(environ, start_response):
         results[match_number][set_number] = (home_winner, away_winner, forfeit, replay_hash)
 
     with contextlib.closing(db.cursor()) as cursor:
-      cursor.execute("SELECT match_number, home_player, away_player FROM ace_matches WHERE week = ?", (week,))
-      aces = dict((row[0], (row[1], row[2])) for row in cursor)
+      cursor.execute("SELECT match_number, home_player, away_player, home_race, away_race FROM ace_matches WHERE week = ?", (week,))
+      aces = dict((row[0], row[1:]) for row in cursor)
 
     result_displays = []
     for (match, (home, away)) in sorted(matches.items()):
@@ -359,8 +359,8 @@ def app(environ, start_response):
           result_displays.append("Not played<br>")
           continue
         if setnum == 5:
-          homeplayer = aces[match][0]
-          awayplayer = aces[match][1]
+          homeplayer = (aces[match][0], aces[match][2])
+          awayplayer = (aces[match][1], aces[match][3])
         else:
           homeplayer = lineups[home][setnum]
           awayplayer = lineups[away][setnum]
@@ -464,7 +464,13 @@ def app(environ, start_response):
                 %(result_entries)s
                 <li>
                   Home ace: <input type="text" name="home_ace"></input>
+                    <select name="home_ace_race">
+                    <option>T</option><option>Z</option><option>P</option><option>R</option>
+                    </select>
                   Away ace: <input type="text" name="away_ace"></input>
+                    <select name="away_ace_race">
+                    <option>T</option><option>Z</option><option>P</option><option>R</option>
+                    </select>
               </ul>
               <input type="submit">
             </form>
@@ -526,10 +532,16 @@ def app(environ, start_response):
     if num_sets == 5:
       home_ace = postdata.getfirst("home_ace")
       away_ace = postdata.getfirst("away_ace")
+      home_ace_race = postdata.getfirst("home_ace_race")
+      away_ace_race = postdata.getfirst("away_ace_race")
       if not home_ace:
         return ["No home ace specified."]
       if not away_ace:
         return ["No away ace specified."]
+      if not home_ace_race:
+        return ["No home ace race specified."]
+      if not away_ace_race:
+        return ["No away ace race specified."]
 
     db = open_db(db_path)
 
@@ -571,9 +583,9 @@ def app(environ, start_response):
 
     if num_sets == 5:
       db.cursor().execute(
-          "INSERT INTO ace_matches(week, match_number, home_player, away_player) "
-          "VALUES (?,?,?,?) "
-          , (week_number, match, home_ace, away_ace))
+          "INSERT INTO ace_matches(week, match_number, home_player, away_player, home_race, away_race) "
+          "VALUES (?,?,?,?,?,?) "
+          , (week_number, match, home_ace, away_ace, home_ace_race, away_ace_race))
 
     db.commit()
 

@@ -32,6 +32,8 @@ CREATE TABLE ace_matches (
   match_number INTEGER,
   home_player TEXT,
   away_player TEXT,
+  home_race TEXT,
+  away_race TEXT,
   PRIMARY KEY (week, match_number)
 );
 
