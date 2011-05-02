@@ -604,7 +604,7 @@ def app(environ, start_response):
     except IOError as err:
       if err.errno != errno.ENOENT:
         raise
-      start_response("200 OK", [("Content-type", "text/plain")])
+      start_response("404 Not Found", [("Content-type", "text/plain")])
       return ["404"]
 
     with handle:
