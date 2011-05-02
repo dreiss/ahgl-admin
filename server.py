@@ -513,11 +513,6 @@ def app(environ, start_response):
 
     for setnum in range(1, 5+1):
       winner = postdata.getfirst("winner_%d" % setnum, "none")
-      if sum_home >= 3 or sum_away >= 3:
-        if setnum == 5 and winner != "none":
-          return ["You played the ace match after one team won?"]
-        winners[setnum] = (0, 0)
-        continue
       if winner == "home":
         winners[setnum] = (1, 0)
         sum_home += 1
@@ -529,7 +524,7 @@ def app(environ, start_response):
 
     num_sets = sum_home + sum_away
 
-    if num_sets == 5:
+    if sum(winners[5]):
       home_ace = postdata.getfirst("home_ace")
       away_ace = postdata.getfirst("away_ace")
       home_ace_race = postdata.getfirst("home_ace_race")
@@ -581,7 +576,7 @@ def app(environ, start_response):
           "VALUES (?,?,?,?,?,?,?) "
           , (week_number, match, setnum, wins[0], wins[1], forfeit, rephashes.get(setnum)))
 
-    if num_sets == 5:
+    if sum(winners[5]):
       db.cursor().execute(
           "INSERT INTO ace_matches(week, match_number, home_player, away_player, home_race, away_race) "
           "VALUES (?,?,?,?,?,?) "
