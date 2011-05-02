@@ -389,7 +389,7 @@ def app(environ, start_response):
           <title>AHGL Result</title>
         </head>
         <body>
-          <h1>AHGL Result Week %d<h1>
+          <h1>AHGL Result Week %d</h1>
           %s
         </body>
       </html>
