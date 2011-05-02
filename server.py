@@ -518,6 +518,8 @@ def app(environ, start_response):
       elif winner == "away":
         winners[setnum] = (0, 1)
         sum_away += 1
+      elif sum_home >= 3 or sum_away >= 3:
+        winners[setnum] = (0, 0)
       else:
         return ["Invalid winner for set %d" % setnum]
 
