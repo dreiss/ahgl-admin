@@ -154,7 +154,7 @@ def app(environ, start_response):
         environ=environ,
     )
 
-    week_number = 3
+    week_number = 4
     try:
       week_number = int(getdata.getfirst("week"))
     except (ValueError, TypeError):
@@ -407,7 +407,7 @@ def app(environ, start_response):
         environ=environ,
     )
 
-    week_number = 2
+    week_number = 3
     try:
       week_number = int(getdata.getfirst("week"))
     except (ValueError, TypeError):
