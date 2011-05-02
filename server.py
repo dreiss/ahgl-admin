@@ -8,6 +8,8 @@ import cgi
 import hashlib
 import collections
 import errno
+import zipfile
+import cStringIO
 
 def open_db(path):
   import sqlite3
@@ -390,10 +392,11 @@ def app(environ, start_response):
         </head>
         <body>
           <h1>AHGL Result Week %d</h1>
+          <p><a href="/ahgl/replay-pack/%d/ahgl_replays_week_%d.zip">Replay Pack</a></p>
           %s
         </body>
       </html>
-    """ % (week, "".join(result_displays))).encode()]
+    """ % (week, week, week, "".join(result_displays))).encode()]
 
   elif request_uri.endswith("/enter-result"):
     db = open_db(db_path)
@@ -610,6 +613,65 @@ def app(environ, start_response):
     with handle:
       start_response("200 OK", [("Content-type", "application/octet-stream")])
       return [handle.read()]
+
+  elif "/replay-pack/" in request_uri:
+    db = open_db(db_path)
+
+    m = re.search(r'/replay-pack/(\d+)/', request_uri)
+    if not m:
+      start_response("404 Not Found", [("Content-type", "text/plain")])
+      return ["404"]
+    try:
+      week = int(m.group(1))
+    except (ValueError, TypeError):
+      start_response("404 Not Found", [("Content-type", "text/plain")])
+      return ["404"]
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT id, name FROM teams")
+      teams = dict(cursor)
+
+    lineups = collections.defaultdict(dict)
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT team, set_number, player FROM lineup WHERE week = ?", (week,))
+      for (team, set_number, player) in cursor:
+        lineups[team][set_number] = player
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute("SELECT match_number, home_player, away_player FROM ace_matches WHERE week = ?", (week,))
+      aces = dict((row[0], row[1:]) for row in cursor)
+
+    buf = cStringIO.StringIO()
+    zfile = zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED)
+
+    with contextlib.closing(db.cursor()) as cursor:
+      cursor.execute(
+          "SELECT m.match_number, m.home_team, m.away_team, s.set_number, s.replay_hash "
+          "FROM matches m JOIN set_results s "
+          "  ON m.match_number = s.match_number "
+          "  AND m.week = ? AND s.week = ? "
+          , (week, week))
+      for row in cursor:
+        match, hteam, ateam, setnum, replayhash = row
+        if not replayhash:
+          continue
+        if setnum < 5:
+          hplayer = lineups[hteam][setnum]
+          aplayer = lineups[ateam][setnum]
+        else:
+          hplayer = aces[match][0]
+          aplayer = aces[match][1]
+        def cleanit(word):
+          return re.sub("[^a-zA-Z0-9]", "", word)
+        zfile.write(
+          os.path.join(work_path, replayhash + ".SC2Replay"),
+          "AHGLpre_Week-%d/Match-%d_%s-%s/%s-%s_%d_%s-%s.SC2Replay" % (
+            week, match, cleanit(teams[hteam]), cleanit(teams[ateam]), cleanit(teams[hteam]), cleanit(teams[ateam]), setnum, cleanit(hplayer), cleanit(aplayer)))
+
+    zfile.close()
+
+    start_response("200 OK", [("Content-type", "application/zip")])
+    return [ buf.getvalue() ]
 
   else:
     start_response("404 Not Found", [("Content-type", "text/plain")])
