@@ -481,7 +481,6 @@ def app(environ, start_response):
   elif request_uri.endswith("/submit-result"):
     start_response("200 OK", [("Content-type", "text/html")])
 
-    week_number = 2
     postdata = cgi.FieldStorage(
         fp=environ['wsgi.input'],
         environ=environ,
