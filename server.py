@@ -20,15 +20,23 @@ def open_db(path):
   return conn
 
 def app(environ, start_response):
-  is_nfsn = "NFSN_SITE_ROOT" in environ
-  if is_nfsn:
-    work_path = "/home/protected/ahgl_pre"
+  is_apache = "SERVER_SOFTWARE" in environ
+  if is_apache:
+    work_path = os.environ["DATA_DIR"]
     request_uri = re.sub(r'\?.*', '', environ["REQUEST_URI"])
   else:
     work_path = "./data"
     request_uri = environ["PATH_INFO"]
 
-  db_path = os.path.join(work_path, "ahgl-pre.sq3")
+  #is_nfsn = "NFSN_SITE_ROOT" in environ
+  #if is_nfsn:
+  #  work_path = "/home/protected/ahgl_pre"
+  #  request_uri = re.sub(r'\?.*', '', environ["REQUEST_URI"])
+  #else:
+  #  work_path = "./data"
+  #  request_uri = environ["PATH_INFO"]
+
+  db_path = os.path.join(work_path, "ahgl-main.sq3")
 
   if request_uri == "/debug":
     start_response("200 OK", [("Content-type", "text/plain")])
@@ -156,7 +164,7 @@ def app(environ, start_response):
         environ=environ,
     )
 
-    week_number = 4
+    week_number = 1
     try:
       week_number = int(getdata.getfirst("week"))
     except (ValueError, TypeError):
@@ -410,7 +418,7 @@ def app(environ, start_response):
         environ=environ,
     )
 
-    week_number = 3
+    week_number = 1
     try:
       week_number = int(getdata.getfirst("week"))
     except (ValueError, TypeError):
