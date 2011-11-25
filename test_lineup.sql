@@ -1,0 +1,16 @@
+INSERT INTO "lineup" VALUES(1,6,1,'implausible.931','P');
+INSERT INTO "lineup" VALUES(1,6,2,'xelnaga.195','Z');
+INSERT INTO "lineup" VALUES(1,6,3,'ceaser.610','P');
+INSERT INTO "lineup" VALUES(1,6,4,'arya.872','P');
+INSERT INTO "lineup" VALUES(1,8,1,'ShamWOW.657','Z');
+INSERT INTO "lineup" VALUES(1,8,2,'joolz.395','P');
+INSERT INTO "lineup" VALUES(1,8,3,'Preposterous.925','Z');
+INSERT INTO "lineup" VALUES(1,8,4,'Fredo.746','Z');
+INSERT INTO "lineup" VALUES(1,3,1,'JohnOldman (Burak Guzel)','Z');
+INSERT INTO "lineup" VALUES(1,3,2,'tstanke (Tim Stanke)','P');
+INSERT INTO "lineup" VALUES(1,3,3,'bingobango (Louis Brandy)','Z');
+INSERT INTO "lineup" VALUES(1,3,4,'icecreamboy (Daniel Kim)','Z');
+INSERT INTO "lineup" VALUES(1,1,1,'MuffinTopper','P');
+INSERT INTO "lineup" VALUES(1,1,2,'Dasnor','Z');
+INSERT INTO "lineup" VALUES(1,1,3,'SteelCurtain','T');
+INSERT INTO "lineup" VALUES(1,1,4,'Skynet','Z');
