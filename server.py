@@ -21,21 +21,9 @@ def open_db(path):
 
 def app(environ, start_response):
   is_apache = "SERVER_SOFTWARE" in environ
-  if is_apache:
-    work_path = os.environ["DATA_DIR"]
-    request_uri = re.sub(r'\?.*', '', environ["REQUEST_URI"])
-  else:
-    work_path = "./data"
-    request_uri = environ["PATH_INFO"]
+  request_uri = (environ.get("SCRIPT_NAME", "") + environ.get("PATH_INFO")) or "/"
 
-  #is_nfsn = "NFSN_SITE_ROOT" in environ
-  #if is_nfsn:
-  #  work_path = "/home/protected/ahgl_pre"
-  #  request_uri = re.sub(r'\?.*', '', environ["REQUEST_URI"])
-  #else:
-  #  work_path = "./data"
-  #  request_uri = environ["PATH_INFO"]
-
+  work_path = os.environ["DATA_DIR"]
   db_path = os.path.join(work_path, "ahgl-main.sq3")
 
   if request_uri == "/debug":
@@ -57,7 +45,7 @@ def app(environ, start_response):
             <ul>
               <li><a href="/ahgl/show-lineup">Show Lineup</a>
               <li><a href="/ahgl/enter-lineup">Enter Lineup</a>
-              <li><a href="/ahgl/show-result">Show result</a>
+              <li><a href="/ahgl/show-result">Show Result</a>
               <li><a href="/ahgl/enter-result">Enter Result</a>
             </ul>
           </body>
@@ -119,7 +107,7 @@ def app(environ, start_response):
 
     lineup_displays = []
     for (match, (home, away)) in sorted(matches.items()):
-      lineup_displays.append("<h2>Match %d: %s vs %s</h2>"
+      lineup_displays.append("<h2>Match %d: %s vs %s</h2><p>"
           % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
       if lineups[home] and lineups[away]:
         for setnum in range(1,5+1):
@@ -130,13 +118,13 @@ def app(environ, start_response):
           else:
             homeplayer = lineups[home][setnum]
             awayplayer = lineups[away][setnum]
-          lineup_displays.append("%s (%s) < %s > (%s) %s<br>"
+          lineup_displays.append("%s (%s) &lt; %s &gt; (%s) %s<br>"
               % tuple(cgi.escape(val) for val in (homeplayer[0], homeplayer[1], mapname, awayplayer[1], awayplayer[0])))
       else:
         displays = ["NOT ENTERED", "LINEUP ENTERED"]
         lineup_displays.append(
             displays[int(bool(lineups[home]))]
-            + " <> " +
+            + " &lt;&gt; " +
             displays[int(bool(lineups[away]))]
             )
 
@@ -146,7 +134,7 @@ def app(environ, start_response):
           <title>AHGL Lineup</title>
         </head>
         <body>
-          <h1>AHGL Lineup Week %d<h1>
+          <h1>AHGL Lineup Week %d</h1>
           %s
         </body>
       </html>
@@ -352,7 +340,7 @@ def app(environ, start_response):
 
     result_displays = []
     for (match, (home, away)) in sorted(matches.items()):
-      result_displays.append("<h2>Match %d: %s vs %s</h2>"
+      result_displays.append("<h2>Match %d: %s vs %s</h2><p>"
           % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
       if not results[match]:
         result_displays.append("No result entered")
