@@ -3,6 +3,14 @@ CREATE TABLE teams (
   name TEXT
 );
 
+CREATE TABLE matches (
+  week INTEGER,
+  match_number INTEGER,
+  home_team INTEGER,
+  away_team INTEGER,
+  PRIMARY KEY (week, match_number)
+);
+
 CREATE TABLE maps (
   week INTEGER,
   set_number INTEGER,
@@ -17,14 +25,6 @@ CREATE TABLE lineup (
   player TEXT,
   race TEXT,
   PRIMARY KEY (week, team, set_number)
-);
-
-CREATE TABLE matches (
-  week INTEGER,
-  match_number INTEGER,
-  home_team INTEGER,
-  away_team INTEGER,
-  PRIMARY KEY (week, match_number)
 );
 
 CREATE TABLE ace_matches (
