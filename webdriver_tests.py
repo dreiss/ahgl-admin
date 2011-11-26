@@ -101,7 +101,6 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       self.assertEqual(css('h1').text, 'AHGL Lineup Entry')
       self.assertEqual(css('h2').text, 'Week %d' % week)
 
-      Select(css('select[name=team]')).select_by_visible_text(team)
       for (number, (name, race)) in enumerate(players):
         css('input[name=player_%d]' % (number+1)).send_keys(name)
         Select(css('select[name=race_%d]' % (number+1))).select_by_visible_text(race)

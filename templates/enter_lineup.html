@@ -8,11 +8,8 @@
     <h2>Week {{week_number}}</h2>
     <form method="POST" action="{{submit_link}}">
       <input type="hidden" name="week" value="{{week_number}}" />
-      <select name="team">
-        {% for tnum, tname in teams %}
-          <option value="{{tnum}}">{{tname}}</option>
-        {% endfor %}
-      </select>
+      <input type="hidden" name="team" value="{{team_number}}" />
+      <h3>{{team_name}}</h3>
       <ul>
         {% for setnum in range(1,num_sets) %}
           <li>{{maps[setnum]}} <input name="player_{{setnum}}"></input>

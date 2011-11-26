@@ -48,6 +48,12 @@ def require_auth(func):
   return wrapper
 
 
+def get_user_team():
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT team FROM accounts WHERE id = ?", (g.account,))
+    return list(cursor)[0][0]
+
+
 @app.before_request
 def before_request():
   g.db = open_db(os.path.join(app.config["DATA_DIR"], "ahgl.sq3"))
@@ -179,14 +185,16 @@ def enter_lineup():
     cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week_number,))
     maps = dict((row[0], row[1]) for row in cursor)
 
+  team_number = get_user_team()
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT id, name FROM teams ORDER BY id")
-    teams = list(cursor)
+    cursor.execute("SELECT name FROM teams WHERE id = ?", (team_number,))
+    team_name = list(cursor)[0][0]
 
   return flask.render_template("enter_lineup.html",
       week_number = week_number,
       maps = maps,
-      teams = teams,
+      team_number = team_number,
+      team_name = team_name,
       num_sets = 5,
       submit_link = flask.url_for(submit_lineup.__name__),
       )
@@ -214,6 +222,9 @@ def submit_lineup():
     team = int(team)
   except ValueError:
     return "Invalid team"
+
+  if team != get_user_team():
+    return "Can't submit for another team"
 
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute("SELECT name FROM teams WHERE id = ?", (team,))
