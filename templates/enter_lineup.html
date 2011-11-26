@@ -6,19 +6,29 @@
   <body>
     <h1>AHGL Lineup Entry</h1>
     <h2>Week {{week_number}}</h2>
-    <form method="POST" action="{{submit_link}}">
-      <input type="hidden" name="week" value="{{week_number}}" />
-      <input type="hidden" name="team" value="{{team_number}}" />
-      <h3>{{team_name}}</h3>
-      <ul>
-        {% for setnum in range(1,num_sets) %}
-          <li>{{maps[setnum]}} <input name="player_{{setnum}}"></input>
-          <select name="race_{{setnum}}">
-          <option>T</option><option>Z</option><option>P</option><option>R</option>
-          </select>
-        {% endfor %}
-      </ul>
-      <input type="submit">
-    </form>
+    <h3>{{team_name}}</h3>
+    {% if lineup_already_entered %}
+      <p>Lineup already entered.</p>
+    {% else %}
+      <form method="POST" action="{{submit_link}}">
+        <input type="hidden" name="week" value="{{week_number}}" />
+        <input type="hidden" name="team" value="{{team_number}}" />
+        <ul>
+          {% for setnum in range(1,num_sets) %}
+            <li>{{maps[setnum]}}
+              <select name="player_{{setnum}}">
+                <option>--</option>
+                {% for pnum, pname in players %}
+                  <option value="{{pnum}}">{{pname}}</option>
+                {% endfor %}
+              </select>
+              <select name="race_{{setnum}}">
+                <option>-</option><option>T</option><option>Z</option><option>P</option><option>R</option>
+              </select>
+          {% endfor %}
+        </ul>
+        <input type="submit">
+      </form>
+    {% endif %}
   </body>
 </html>

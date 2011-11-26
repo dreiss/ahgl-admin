@@ -12,6 +12,13 @@ CREATE TABLE accounts (
   UNIQUE (auth_key)
 );
 
+CREATE TABLE players (
+  id INTEGER PRIMARY KEY,
+  team INTEGER,
+  active INTEGER,
+  name TEXT
+);
+
 CREATE TABLE matches (
   week INTEGER,
   match_number INTEGER,
@@ -31,7 +38,7 @@ CREATE TABLE lineup (
   week INTEGER,
   team INTEGER,
   set_number INTEGER,
-  player TEXT,
+  player INTEGER,
   race TEXT,
   PRIMARY KEY (week, team, set_number)
 );

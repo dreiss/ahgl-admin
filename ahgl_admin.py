@@ -131,7 +131,11 @@ def show_lineup_week(week):
 
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT team, set_number, player, race FROM lineup WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT l.team, set_number, p.name, race "
+        "FROM lineup l JOIN players p on p.id = l.player "
+        "WHERE week = ? "
+        , (week,))
     for (team, set_number, player, race) in cursor:
       lineups[team][set_number] = (player, race)
 
@@ -190,11 +194,21 @@ def enter_lineup():
     cursor.execute("SELECT name FROM teams WHERE id = ?", (team_number,))
     team_name = list(cursor)[0][0]
 
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT id, name FROM players WHERE team = ? AND active = 1 ORDER BY name", (team_number,))
+    players = list(cursor)
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT COUNT(*) FROM lineup WHERE week = ? AND team = ?", (week_number, team_number,))
+    lineup_already_entered = bool(list(cursor)[0][0])
+
   return flask.render_template("enter_lineup.html",
       week_number = week_number,
+      lineup_already_entered = lineup_already_entered,
       maps = maps,
       team_number = team_number,
       team_name = team_name,
+      players = players,
       num_sets = 5,
       submit_link = flask.url_for(submit_lineup.__name__),
       )
@@ -240,18 +254,33 @@ def submit_lineup():
     if list(cursor) != [(0,)]:
       return "Lineup already submitted"
 
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT id FROM players WHERE team = ? AND active = 1", (team_number,))
+    eligible_players = set([row[0] for row in cursor])
+
+  entered_players = set()
+
   for setnum in range(1,5):
     player = postdata.getlist("player_%d" % setnum)
     if len(player) != 1 or not player[0]:
       return "No value submitted for 'player_%d'" % setnum
     player = player[0]
+    try:
+      player = int(player)
+    except ValueError:
+      return "Invalid value for player %d" % setnum
+    if player not in eligible_players:
+      return "Player %d is not an eligible team member" % setnum
+    if player in entered_players:
+      return "Duplicate player for player %d" % setnum
+    entered_players.add(player)
 
     race = postdata.getlist("race_%d" % setnum)
     if len(race) != 1 or not race[0]:
       return "No value submitted for 'race_%d'" % setnum
     race = race[0]
     if race not in list("TZPR"):
-      return "Invalid race"
+      return "Invalid race for player %d" % setnum
 
     with contextlib.closing(g.db.cursor()) as cursor:
       cursor.execute(
@@ -294,7 +323,11 @@ def show_result_week(week):
 
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT team, set_number, player, race FROM lineup WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT l.team, set_number, p.name, race "
+        "FROM lineup l JOIN players p on p.id = l.player "
+        "WHERE week = ? "
+        , (week,))
     for (team, set_number, player, race) in cursor:
       lineups[team][set_number] = (player, race)
 
@@ -524,7 +557,11 @@ def get_replay_pack(week, fakepath):
 
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT team, set_number, player FROM lineup WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT l.team, set_number, p.name "
+        "FROM lineup l JOIN players p on p.id = l.player "
+        "WHERE week = ? "
+        , (week,))
     for (team, set_number, player) in cursor:
       lineups[team][set_number] = player
 

@@ -102,7 +102,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       self.assertEqual(css('h2').text, 'Week %d' % week)
 
       for (number, (name, race)) in enumerate(players):
-        css('input[name=player_%d]' % (number+1)).send_keys(name)
+        Select(css('select[name=player_%d]' % (number+1))).select_by_visible_text(name)
         Select(css('select[name=race_%d]' % (number+1))).select_by_visible_text(race)
 
       css('input[type=submit]').submit()
@@ -127,17 +127,17 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         ])
 
       enter_lineup(1, 'Facebook', [
-        ('JohnOldman (Burak Guzel)', 'Z'),
-        ('tstanke (Tim Stanke)', 'P'),
-        ('bingobango (Louis Brandy)', 'Z'),
-        ('icecreamboy (Daniel Kim)', 'Z'),
+        ('JohnOldman.0', 'Z'),
+        ('tstanke.0', 'P'),
+        ('bingobango.0', 'Z'),
+        ('icecreamboy.0', 'Z'),
         ])
 
       enter_lineup(1, 'Amazon', [
-        ('MuffinTopper', 'P'),
-        ('Dasnor', 'Z'),
-        ('SteelCurtain', 'T'),
-        ('Skynet', 'Z'),
+        ('MuffinTopper.0', 'P'),
+        ('Dasnor.0', 'Z'),
+        ('SteelCurtain.0', 'T'),
+        ('Skynet.0', 'Z'),
         ])
 
     login('Twitter')

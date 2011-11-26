@@ -1,2 +1,4 @@
 - More secure password scheme
 - CSRF protection
+- Factor out data getters
+- Jinja-ize lineup/result display
