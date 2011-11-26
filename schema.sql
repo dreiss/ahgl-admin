@@ -3,6 +3,15 @@ CREATE TABLE teams (
   name TEXT
 );
 
+CREATE TABLE accounts (
+  id INTEGER PRIMARY KEY,
+  email TEXT,
+  team INTEGER,
+  auth_key TEXT,
+  UNIQUE (email),
+  UNIQUE (auth_key)
+);
+
 CREATE TABLE matches (
   week INTEGER,
   match_number INTEGER,

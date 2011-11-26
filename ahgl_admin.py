@@ -37,6 +37,17 @@ def content_type(ctype):
   return decorator
 
 
+def require_auth(func):
+  @functools.wraps(func)
+  def wrapper(*args, **kwds):
+    account = flask.session.get("account")
+    if not account:
+      return flask.render_template("no_account.html")
+    g.account = account
+    return func(*args, **kwds)
+  return wrapper
+
+
 @app.before_request
 def before_request():
   g.db = open_db(os.path.join(app.config["DATA_DIR"], "ahgl.sq3"))
@@ -62,6 +73,26 @@ def home_page():
       show_result = flask.url_for(show_result_select.__name__),
       enter_result = flask.url_for(enter_result.__name__),
     ))
+
+
+@app.route("/login/<auth_key>")
+def login(auth_key):
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT id FROM accounts WHERE auth_key = ?", (auth_key,))
+    results = list(cursor)
+
+  if not results:
+    return flask.render_template("no_account.html")
+
+  flask.session["account"] = results[0][0]
+
+  return flask.redirect(flask.url_for(home_page.__name__))
+
+
+@app.route("/logout")
+def logout():
+  del flask.session["account"]
+  return flask.redirect(flask.url_for(home_page.__name__))
 
 
 @app.route("/show-lineup")
@@ -136,6 +167,7 @@ def show_lineup_week(week):
 
 
 @app.route("/enter-lineup")
+@require_auth
 def enter_lineup():
   week_number = 1
   try:
@@ -161,6 +193,7 @@ def enter_lineup():
 
 
 @app.route("/submit-lineup", methods=["POST"])
+@require_auth
 def submit_lineup():
   postdata = flask.request.form
 
@@ -324,6 +357,7 @@ def show_result_week(week):
 
 
 @app.route("/enter-result")
+@require_auth
 def enter_result():
   week_number = 1
   try:
@@ -349,6 +383,7 @@ def enter_result():
 
 
 @app.route("/submit-result", methods=["POST"])
+@require_auth
 def submit_result():
   postdata = flask.request.form
 

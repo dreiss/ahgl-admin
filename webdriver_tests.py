@@ -39,6 +39,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     self.data_dir = tempfile.mkdtemp()
     ahgl_admin.app.debug = True  # TODO: drop
     ahgl_admin.app.config['DATA_DIR'] = self.data_dir
+    ahgl_admin.app.secret_key = 'AHGL'
     self.httpd = wsgiref.simple_server.make_server('', 0, ahgl_admin.app.wsgi_app)
     self.base_url = 'http://localhost:%d/' % self.httpd.server_address[1]
     threading.Thread(target=self.httpd.serve_forever).start()
@@ -68,7 +69,32 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     wd.get(bu)
     self.assertEqual(css('h1').text, 'AHGL Admin Page')
 
+    def login(team):
+      with contextlib.closing(db_conn.cursor()) as cursor:
+        cursor.execute(
+            'SELECT auth_key FROM accounts WHERE team = '
+            '(SELECT id FROM teams WHERE name =?) '
+            , (team,))
+        auth_key = list(cursor)[0][0]
+      wd.get(bu + 'login/' + auth_key)
+
+    wd.find_element_by_link_text('Enter Lineup').click()
+    wait_title('No Account')
+    wd.get(bu)
+    wd.get(bu + 'login/foo')
+    wait_title('No Account')
+    login('Twitter')
+    wait_title('AHGL Admin Page')
+    wd.find_element_by_link_text('Enter Lineup').click()
+    wait_title('AHGL Lineup Entry')
+    wd.get(bu + 'logout')
+    wait_title('AHGL Admin Page')
+    wd.find_element_by_link_text('Enter Lineup').click()
+    wait_title('No Account')
+    wd.get(bu)
+
     def enter_lineup(week, team, players):
+      login(team)
       wd.find_element_by_link_text('Enter Lineup').click()
       wait_title('AHGL Lineup Entry')
 
@@ -114,6 +140,8 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         ('SteelCurtain', 'T'),
         ('Skynet', 'Z'),
         ])
+
+    login('Twitter')
 
     wd.find_element_by_link_text('Show Lineup').click()
     wait_title('AHGL Select Lineup Week')
