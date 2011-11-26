@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AHGL Select {{item_type}} Week</title>
+  </head>
+  <body>
+    {% for wnum, wlink in items %}
+      <a href="{{wlink}}">Week {{wnum}}</a><br>
+    {% endfor %}
+  </body>
+</html>

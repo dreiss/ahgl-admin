@@ -15,7 +15,7 @@ import selenium.webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 
-import server
+import ahgl_admin
 
 
 def get_web_driver():
@@ -37,8 +37,9 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
   def setUp(self):
     self.wd = get_web_driver()
     self.data_dir = tempfile.mkdtemp()
-    os.environ['DATA_DIR'] = self.data_dir
-    self.httpd = wsgiref.simple_server.make_server('', 0, server.app)
+    ahgl_admin.app.debug = True  # TODO: drop
+    ahgl_admin.app.config['DATA_DIR'] = self.data_dir
+    self.httpd = wsgiref.simple_server.make_server('', 0, ahgl_admin.app.wsgi_app)
     self.base_url = 'http://localhost:%d/' % self.httpd.server_address[1]
     threading.Thread(target=self.httpd.serve_forever).start()
     print self.data_dir  # TODO: drop
@@ -50,7 +51,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       shutil.rmtree(self.data_dir)
 
   def runTest(self):
-    db_conn = server.open_db(os.path.join(self.data_dir, 'ahgl-main.sq3'))
+    db_conn = ahgl_admin.open_db(os.path.join(self.data_dir, 'ahgl.sq3'))
     for fname in get_sql_files():
       with open(fname) as handle:
         db_conn.executescript(handle.read())

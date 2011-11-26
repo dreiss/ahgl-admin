@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AHGL Result Entry</title>
+  </head>
+  <body>
+    <h1>AHGL Result Entry</h1>
+    <h2>Week {{week_number}}</h2>
+    <form enctype="multipart/form-data" method="POST" action="{{submit_link}}">
+      <input type="hidden" name="week" value="{{week_number}}" />
+      <select name="match">
+        {% for num, ht, at in matches %}
+          <option value="{{num}}">{{ht}} (Home) vs {{at}} (Away)</option>
+        {% endfor %}
+      </select>
+      <ul>
+        <!-- TODO: Add some label tags here -->
+        {% for setnum in range(1, num_sets+1) %}
+          <li>Game {{setnum}} winner:
+          <input type="radio" name="winner_{{setnum}}" value="home">home
+          <input type="radio" name="winner_{{setnum}}" value="away">away
+          {% if setnum > max_required %}
+            <input type="radio" name="winner_{{setnum}}" value="none">not played
+          {% endif %}
+          | <input type="checkbox" name="forfeit_{{setnum}}">forfeit
+          | Replay: <input type="file" name="replay_{{setnum}}">
+        {% endfor %}
+        <li>
+          Home ace: <input type="text" name="home_ace"></input>
+            <select name="home_ace_race">
+            <option>T</option><option>Z</option><option>P</option><option>R</option>
+            </select>
+          Away ace: <input type="text" name="away_ace"></input>
+            <select name="away_ace_race">
+            <option>T</option><option>Z</option><option>P</option><option>R</option>
+            </select>
+      </ul>
+      <input type="submit">
+    </form>
+  </body>
+</html>
