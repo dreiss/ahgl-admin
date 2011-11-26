@@ -214,20 +214,19 @@ def submit_lineup():
   except ValueError:
     return "Invalid week"
 
-  team = postdata.getlist("team")
-  if len(team) != 1 or not team[0]:
+  teamfield = postdata.getlist("team")
+  if len(teamfield) != 1 or not teamfield[0]:
     return "No value submitted for 'team'"
-  team = team[0]
+  team_string = teamfield[0]
   try:
-    team = int(team)
+    team_number = int(team_string)
   except ValueError:
     return "Invalid team"
-
-  if team != get_user_team():
+  if team_number != get_user_team():
     return "Can't submit for another team"
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT name FROM teams WHERE id = ?", (team,))
+    cursor.execute("SELECT name FROM teams WHERE id = ?", (team_number,))
     if len(list(cursor)) != 1:
       return "Invalid team"
 
@@ -237,7 +236,7 @@ def submit_lineup():
       return "Invalid week"
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT COUNT(*) FROM lineup WHERE team = ? AND week = ?", (team, week_number))
+    cursor.execute("SELECT COUNT(*) FROM lineup WHERE team = ? AND week = ?", (team_number, week_number))
     if list(cursor) != [(0,)]:
       return "Lineup already submitted"
 
@@ -258,7 +257,7 @@ def submit_lineup():
       cursor.execute(
           "INSERT INTO lineup(week, team, set_number, player, race) "
           "VALUES (?,?,?,?,?) "
-          , (week_number, team, setnum, player, race))
+          , (week_number, team_number, setnum, player, race))
 
   g.db.commit()
 
