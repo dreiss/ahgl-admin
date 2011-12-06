@@ -1,0 +1,19 @@
+<div class="confirm_box">
+  <form method="POST" action="{{url_for('confirm_result')}}">
+    <input type="hidden" name="week" value="{{week}}">
+    <input type="hidden" name="match_number" value="{{match_number}}">
+    <input type="hidden" name="set_number" value="{{set_number}}">
+    <strong>What about {{hteam}} vs. {{ateam}}, game {{set_number}} (on {{mapname}})?</strong>
+    <p>If this game is going to be played later, you can ignore this box.
+    <p>If it will not be played, enter the results here.
+    </p>
+
+    <select name="winner">
+      <option>--</option>
+      <option value="home">{{hteam}} won (by forfeit, or whatever)</option>
+      <option value="away">{{ateam}} won (by forfeit, or whatever)</option>
+      <option value="none">The game wasn't played (match ended early, or whatever)</option>
+    </select>
+    <input type="submit">
+  </form>
+</div>

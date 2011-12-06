@@ -6,10 +6,16 @@ import re
 import hashlib
 import os
 import errno
+import subprocess
 import zipfile
 import cStringIO
+import json
 import cgi
 import flask
+
+
+class UserVisibleException(Exception):
+  pass
 
 
 def open_db(path):
@@ -341,6 +347,13 @@ def show_result_week(week):
     cursor.execute("SELECT match_number, home_player, away_player, home_race, away_race FROM ace_matches WHERE week = ?", (week,))
     aces = dict((row[0], row[1:]) for row in cursor)
 
+  def getkeys(d, *keys):
+    for k in keys:
+      d = d.get(k)
+      if d is None:
+        return None
+    return d
+
   # TODO: Jinja-ize this.
   result_displays = []
   for (match, (home, away)) in sorted(matches.items()):
@@ -356,13 +369,17 @@ def show_result_week(week):
     for setnum in range(1,5+1):
       result_displays.append(
           "Game %d (%s): " % (setnum, cgi.escape(maps[setnum])))
-      win_tuple = (results[match][setnum][0], results[match][setnum][1])
+      try:
+        win_tuple = (results[match][setnum][0], results[match][setnum][1])
+      except KeyError:  # XXX gross
+        win_tuple = (0,0)
       if not sum(win_tuple):
         result_displays.append("Not played<br>")
         continue
       if setnum == 5:
-        homeplayer = (aces[match][0], aces[match][2])
-        awayplayer = (aces[match][1], aces[match][3])
+        match_aces = aces.get(match, ("ACE", "ACE", "?", "?"))
+        homeplayer = (match_aces[0], match_aces[2])
+        awayplayer = (match_aces[1], match_aces[3])
       else:
         homeplayer = lineups[home][setnum]
         awayplayer = lineups[away][setnum]
@@ -400,134 +417,302 @@ def show_result_week(week):
 
 
 @app.route("/enter-result")
-@require_auth
 def enter_result():
-  week_number = 1
-  try:
-    week_number = int(flask.request.args.get("week"))
-  except (ValueError, TypeError):
-    pass
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT MAX(week) FROM maps")
+    week_number = list(cursor)[0][0]
+  week_number = 2
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT match_number, ht.name, at.name FROM matches, teams ht, teams at WHERE week = ? AND ht.id = home_team AND at.id = away_team", (week_number,))
-    matches = list(cursor)
+    cursor.execute(
+      "SELECT matches.week, matches.match_number, maps.set_number, "
+        "ht.name, hp.name, hl.race, at.name, ap.name, al.race, "
+        "maps.mapname "
+      "FROM matches JOIN maps ON matches.week = maps.week "
+      "JOIN lineup hl ON matches.week = hl.week AND matches.home_team = hl.team AND maps.set_number = hl.set_number "
+      "JOIN lineup al ON matches.week = al.week AND matches.away_team = al.team AND maps.set_number = al.set_number "
+      "JOIN teams ht ON hl.team = ht.id "
+      "JOIN teams at ON al.team = at.id "
+      "JOIN players hp ON hl.player = hp.id "
+      "JOIN players ap ON al.player = ap.id "
+      "WHERE matches.week >= ?"
+      , (week_number - 1,))
+    rows = list(cursor)
 
-  with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week_number,))
-    maps = dict((row[0], row[1]) for row in cursor)
+  all_matches = {}
+  games = {}
+  for row in rows:
+    (w, m, s, ht, hn, hr, at, an, ar, mn) = row
+    all_matches[(w, m)] = (ht, at)
+    games[(w,m,s)] = "HOME: %s - %s (%s) -[%s]- AWAY: %s - %s (%s)" % (
+        ht, hn, hr, mn, at, an, ar)
+  for ((w, m), (ht, at)) in all_matches.items():
+    ace_set = 5
+    games[(w,m,ace_set)] = "HOME: %s - ACE -VS- AWAY: %s - ACE" % (ht, at)
+
+  flat_games = [ ("%s,%s,%s" % wms, name) for (wms, name) in sorted(games.items()) ]
 
   return flask.render_template("enter_result.html",
-      week_number = week_number,
-      matches = matches,
-      num_sets = 5,
-      max_required = 3,
-      submit_link = flask.url_for(submit_result.__name__),
+      games=flat_games,
       )
 
 
-@app.route("/submit-result", methods=["POST"])
-@require_auth
-def submit_result():
-  postdata = flask.request.form
+def import_replay(repfield):
+  if not repfield:
+    return (None, None)
+  rep = repfield.read()
+  rephash = hashlib.sha1(rep).hexdigest()
+  repfile = os.path.join(app.config["DATA_DIR"], rephash + ".SC2Replay")
+  if not os.path.exists(repfile):  # TODO: check sha1
+    with open(repfile, "wb") as handle:
+      handle.write(rep)
+  return (rephash, repfile)
 
-  week_number = postdata.getlist("week")
-  if len(week_number) != 1 or not week_number[0]:
-    return "No value submitted for 'week'"
-  week_number = week_number[0]
-  try:
-    week_number = int(week_number)
-  except ValueError:
-    return "Invalid week"
 
-  match = postdata.getlist("match")
-  if len(match) != 1 or not match[0]:
-    return "No value submitted for 'match'"
-  match = match[0]
-  try:
-    match = int(match)
-  except ValueError:
-    return "Invalid match"
+def get_replay_json(fname):
+  with open(fname) as handle:
+    if handle.read(4) == "JSON":
+      return handle.read()
+  app_root = os.path.dirname(__file__)
+  spenv = dict(os.environ)
+  spenv["SC2REPLAY_ROOT"] = os.path.join(app_root, "phpsc2replay")
+  proc = subprocess.Popen([
+    os.path.join(app_root, "replay_info.php"),
+    fname],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    env=spenv,
+    )
+  stdout, stderr = proc.communicate()
+  if proc.returncode != 0:
+    app.logger.warning("Parse failed for %s.  Stderr = '%s'", fname, stderr)
+    return json.dumps({"error": "Parser failed"})
+  else:
+    return stdout
 
-  sum_home = 0
-  sum_away = 0
 
-  winners = {}
-
-  for setnum in range(1, 5+1):
-    winner = postdata.get("winner_%d" % setnum, "none")
-    if winner == "home":
-      winners[setnum] = (1, 0)
-      sum_home += 1
-    elif winner == "away":
-      winners[setnum] = (0, 1)
-      sum_away += 1
-    elif sum_home >= 3 or sum_away >= 3:
-      winners[setnum] = (0, 0)
-    else:
-      return "Invalid winner for set %d" % setnum
-
-  num_sets = sum_home + sum_away
-
-  if sum(winners[5]):
-    home_ace = postdata.get("home_ace")
-    away_ace = postdata.get("away_ace")
-    home_ace_race = postdata.get("home_ace_race")
-    away_ace_race = postdata.get("away_ace_race")
-    if not home_ace:
-      return "No home ace specified."
-    if not away_ace:
-      return "No away ace specified."
-    if not home_ace_race:
-      return "No home ace race specified."
-    if not away_ace_race:
-      return "No away ace race specified."
+def infer_wms_from_replays(filenames, week_number):
+  metadatas = [ json.loads(get_replay_json(filename))
+      for filename in filenames ]
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT DISTINCT week FROM maps WHERE week = ?", (week_number,))
-    if len(list(cursor)) != 1:
-      return "Invalid week"
+    cursor.execute(
+        "SELECT "
+          "ht.name AS hteam, hp.name AS hplay, hl.race AS hrace, "
+          "at.name AS ateam, ap.name AS aplay, al.race AS arace, "
+          "matches.week, matches.match_number, maps.set_number, maps.mapname "
+        "FROM matches "
+        "JOIN maps ON matches.week = maps.week "
+          # Only consider the last two weeks as candidates.
+          "AND matches.week >= (? - 1) "
+          "AND matches.week <= ? "
+        "JOIN lineup hl ON matches.week = hl.week AND matches.home_team = hl.team AND maps.set_number = hl.set_number "
+        "JOIN lineup al ON matches.week = al.week AND matches.away_team = al.team AND maps.set_number = al.set_number "
+        "JOIN teams ht ON hl.team = ht.id "
+        "JOIN teams at ON al.team = at.id "
+        "JOIN players hp ON hl.player = hp.id "
+        "JOIN players ap ON al.player = ap.id "
+        , (week_number, week_number))
+    candidates = [ dict(zip([elt[0] for elt in cursor.description], row)) for row in cursor ]
 
-  with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT COUNT(*) FROM matches WHERE week = ? AND match_number = ?", (week_number, match))
-    if list(cursor) != [(1,)]:
-      return "Invalid match"
-
-  with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT COUNT(*) FROM set_results WHERE week = ? AND match_number = ?", (week_number, match))
-    if list(cursor) != [(0,)]:
-      return "Result already submitted"
-
-  rephashes = {}
-
-  for setnum in range(1, 5+1):
-    repfield = flask.request.files.get("replay_%d" % setnum)
-    if not repfield:
+  suggestions = []
+  for md in metadatas:
+    if "error" in md:
+      suggestions.append(None)
       continue
-    rep = repfield.read()
-    rephash = hashlib.sha1(rep).hexdigest()
-    repfile = os.path.join(app.config["DATA_DIR"], rephash + ".SC2Replay")
-    if not os.path.exists(repfile):
-      with open(repfile, "wb") as handle:
-        handle.write(rep)
-    rephashes[setnum] = rephash
+    for c in candidates:
+      if replay_matches_set(md, c):
+        suggestions.append(c)
+        break
+    else:
+      suggestions.append(None)
 
-  for setnum in range(1, 5+1):
-    forfeit = 1 if postdata.get("forfeit_%d" % setnum) == "on" else 0
-    wins = winners[setnum]
-    g.db.cursor().execute(
+  return suggestions
+
+
+def replay_matches_set(md, c):
+  def normalize_map_name(mapname):
+    mapname = re.sub(r'\b(?:TSL3|TSL|GSL|MLG|SE|LE|RE|The)\b', "", mapname)
+    mapname = re.sub(r'[^A-Za-z ]', "", mapname)
+    mapname = re.sub(r' +', " ", mapname)
+    mapname = mapname.lower().strip()
+    return mapname
+
+  def normalize_player_name(playername):
+    return re.sub(r'\.\d+$', "", playername).lower()
+
+  if normalize_map_name(md["map_name"]) != normalize_map_name(c["mapname"]):
+    return False
+
+  nhp = normalize_player_name(c["hplay"])
+  nap = normalize_player_name(c["aplay"])
+  pairings = [(nhp, c["hrace"], nap, c["arace"]), (nap, c["arace"], nhp, c["hrace"])]
+  if (
+      normalize_player_name(md["players"][0]["name"]), md["players"][0]["srace"][0],
+      normalize_player_name(md["players"][1]["name"]), md["players"][1]["srace"][0],
+      ) not in pairings:
+    return False
+
+  return True
+
+
+@app.route("/post-replays", methods=["POST"])
+def post_replays():
+  replays = flask.request.files.getlist("replays")
+  if len(replays) == 1 and not replays[0].filename:
+    resp = app.make_response("for(;;);" + json.dumps({"htmls": [
+      flask.render_template("no_file_uploaded.html")
+      ]}))
+    resp.headers["Content-Type"] = "application/json"
+    return resp
+
+  upnames = []
+  rephashes = []
+  filenames = []
+  for field in replays:
+    upnames.append(field.filename or "Unnamed file")
+    rephash, filename = import_replay(field)
+    if not filename:
+      raise Exception("Failed to import replay")
+    rephashes.append(rephash)
+    filenames.append(filename)
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT MAX(week) FROM maps")
+    week_number = list(cursor)[0][0]
+    week_number = 1
+
+  suggestions = infer_wms_from_replays(filenames, week_number)
+
+  def make_info(sug, pref):
+    return "%s - %s (%s)" % (
+        sug[pref+"team"], sug[pref+"play"], sug[pref+"race"])
+
+  htmls = []
+  all_matches = set()
+  all_games = set()
+  for rhash, sug, fname in zip(rephashes, suggestions, upnames):
+    if sug:
+      all_matches.add((sug["week"], sug["match_number"]))
+      all_games.add((sug["week"], sug["match_number"], sug["set_number"]))
+      html = flask.render_template("confirm_result_box.html",
+          prefilled=dict(
+            week=sug["week"],
+            match_number=sug["match_number"],
+            set_number=sug["set_number"],
+            replay_hash=rhash,
+            ),
+          filename=fname,
+          home_info=make_info(sug, "h"),
+          away_info=make_info(sug, "a"),
+          )
+    else:
+      html = flask.render_template("no_suggestion_box.html", filename=fname)
+    htmls.append(html)
+
+  for (w,m) in all_matches:
+    for s in range(1, 5+1):
+      if (w,m,s) not in all_games:
+        # XXX batch this at least.
+        with contextlib.closing(g.db.cursor()) as cursor:
+          cursor.execute(
+              "SELECT ht.name, at.name, maps.mapname "
+              "FROM matches "
+              "JOIN maps ON matches.week = maps.week "
+              "JOIN teams ht ON matches.home_team = ht.id "
+              "JOIN teams at ON matches.away_team = at.id "
+              "WHERE matches.week = ? AND matches.match_number = ? AND maps.set_number = ? "
+              , (w, m, s))
+          # XXX check errors?
+          (hteam, ateam, mapname) = list(cursor)[0]
+        htmls.append(flask.render_template("missing_game_box.html",
+          week=w, match_number=m, set_number=s,
+          hteam=hteam, ateam=ateam, mapname=mapname))
+
+  resp = app.make_response("for(;;);" + json.dumps({"htmls": htmls}))
+  resp.headers["Content-Type"] = "application/json"
+  return resp
+
+
+def do_confirm(wms, rhash, winner):
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "SELECT COUNT(*) "
+        "FROM matches JOIN maps "
+        "ON matches.week = maps.week "
+        "WHERE matches.week = ? AND match_number = ? AND set_number = ? "
+        , wms)
+    if list(cursor) != [(1,)]:
+      raise UserVisibleException("Unknown game %d,%d,%d" % wms)
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "SELECT COUNT(*) "
+        "FROM set_results "
+        "WHERE week = ? AND match_number = ? AND set_number = ? "
+        , wms)
+    if list(cursor) != [(0,)]:
+      raise UserVisibleException("Result already submitted for %d,%d,%d" % wms)
+
+  wins = {"home": (1,0), "away": (0,1), "none": (0,0)}.get(winner)
+  if not wins:
+    raise UserVisibleException("Invalid winner")
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
         "INSERT INTO set_results(week, match_number, set_number, home_winner, away_winner, forfeit, replay_hash) "
         "VALUES (?,?,?,?,?,?,?) "
-        , (week_number, match, setnum, wins[0], wins[1], forfeit, rephashes.get(setnum)))
-
-  if sum(winners[5]):
-    g.db.cursor().execute(
-        "INSERT INTO ace_matches(week, match_number, home_player, away_player, home_race, away_race) "
-        "VALUES (?,?,?,?,?,?) "
-        , (week_number, match, home_ace, away_ace, home_ace_race, away_ace_race))
+        , (wms[0], wms[1], wms[2], wins[0], wins[1], 0, rhash))
 
   g.db.commit()
 
-  return flask.render_template("success.html", item_type="Result")
+
+@app.route("/confirm-result", methods=["POST"])
+def confirm_result():
+  try:
+    postdata = flask.request.form
+    wms = []
+    for key in ["week", "match_number", "set_number"]:
+      val = postdata.get(key)
+      if not val:
+        raise UserVisibleException("Missing value for %s" % key)
+      try:
+        wms.append(int(val))
+      except ValueError:
+        raise UserVisibleException("Invalid value for %s" % key)
+    wms = tuple(wms)
+    rhash = postdata.get("replay_hash")
+    # rhash can be missing for unplayed games
+
+    do_confirm(wms, rhash, postdata.get("winner"))
+    result = {"message": "Success!"}
+  except UserVisibleException as exn:
+    result = {"message": str(exn)}
+
+  resp = app.make_response("for(;;);" + json.dumps(result))
+  resp.headers["Content-Type"] = "application/json"
+  return resp
+
+
+@app.route("/post-simple-result", methods=["POST"])
+@content_type("text/plain")
+def post_simple_result():
+  try:
+    postdata = flask.request.form
+
+    try:
+      wms = tuple([int(val) for val in postdata.get("wms").split(",")])
+      if len(wms) != 3:
+        raise Exception("Invalid wms")
+    except Exception:
+      raise UserVisibleException("Invalid game selected")
+
+    rhash, _ = import_replay(flask.request.files.get("replay"))
+
+    do_confirm(wms, rhash, postdata.get("winner"))
+    return "Success!"
+  except UserVisibleException as exn:
+    return "Error: %s" % exn
 
 
 @app.route("/replay/<rephash>/<fakepath>")

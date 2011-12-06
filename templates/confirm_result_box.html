@@ -1,0 +1,18 @@
+<div class="confirm_box">
+  <form method="POST" action="{{url_for('confirm_result')}}">
+    {% for fkey, fval in prefilled.items() %}
+      <input type="hidden" name="{{fkey}}" value="{{fval}}">
+    {% endfor %}
+    <strong>{{filename}}</strong>
+    <p>
+      {{home_info}} -VS- {{away_info}}
+    </p>
+    Winner:
+    <select name="winner">
+      <option>--</option>
+      <option value="home">{{home_info}}</option>
+      <option value="away">{{away_info}}</option>
+    </select>
+    <input type="submit">
+  </form>
+</div>

@@ -2,3 +2,7 @@
 - CSRF protection
 - Factor out data getters
 - Jinja-ize lineup/result display
+- Maybe don't load files into memory?
+
+Bugs in result submission:
+- Lots of forms are double-submit-able.
