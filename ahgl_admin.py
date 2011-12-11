@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import operator
 import functools
 import contextlib
 import collections
@@ -338,7 +339,12 @@ def show_result_week(week):
       results[match_number][set_number] = (home_winner, away_winner, forfeit, replay_hash)
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT match_number, home_player, away_player, home_race, away_race FROM ace_matches WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT match_number, hp.name, ap.name, home_race, away_race "
+        "FROM ace_matches "
+        "JOIN players hp ON ace_matches.home_player = hp.id "
+        "JOIN players ap ON ace_matches.away_player = ap.id "
+        "WHERE week = ?", (week,))
     aces = dict((row[0], row[1:]) for row in cursor)
 
   # TODO: Jinja-ize this.
@@ -416,13 +422,28 @@ def enter_result():
     cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week_number,))
     maps = dict((row[0], row[1]) for row in cursor)
 
+  extra_params = {}
+  for role in ["home", "away"]:
+    with contextlib.closing(g.db.cursor()) as cursor:
+      cursor.execute(
+          "SELECT players.id, teams.name, players.name "
+          "FROM matches "
+          "JOIN teams ON matches.%s_team = teams.id "
+          "JOIN players ON teams.id = players.team "
+          "WHERE matches.week = ? AND players.active "
+          % (role,)
+          , (week_number,))
+      extra_params[role + "_aces"] = list(sorted([
+        (pid, tname + " - " + pname) for (pid, tname, pname) in cursor ],
+        key=operator.itemgetter(1)))
+
   return flask.render_template("enter_result.html",
       week_number = week_number,
       matches = matches,
       num_sets = 5,
       max_required = 3,
       submit_link = flask.url_for(submit_result.__name__),
-      )
+      **extra_params)
 
 
 @app.route("/submit-result", methods=["POST"])
@@ -473,14 +494,45 @@ def submit_result():
     away_ace = postdata.get("away_ace")
     home_ace_race = postdata.get("home_ace_race")
     away_ace_race = postdata.get("away_ace_race")
+    # Make sure the aces were specified.
     if not home_ace:
       return "No home ace specified."
     if not away_ace:
       return "No away ace specified."
+    # Make sure the aces are integers.
+    try:
+      home_ace = int(home_ace)
+      away_ace = int(away_ace)
+    except ValueError:
+      return "Invalid ace specified."
+    # Make sure they are not zero.
+    if not home_ace:
+      return "No home ace specified."
+    if not away_ace:
+      return "No away ace specified."
+    # Make sure the races are there.
     if not home_ace_race:
       return "No home ace race specified."
     if not away_ace_race:
       return "No away ace race specified."
+    if home_ace_race not in list("TZPR"):
+      return "Invalid home ace race specified."
+    if away_ace_race not in list("TZPR"):
+      return "Invalid home ace race specified."
+    with contextlib.closing(g.db.cursor()) as cursor:
+      cursor.execute(
+          "SELECT home_team, away_team "
+          "FROM matches "
+          "WHERE week = ? AND match_number = ?"
+          , (week_number, match))
+      (home_team, away_team) = list(cursor)[0]
+    with contextlib.closing(g.db.cursor()) as cursor:
+      cursor.execute("SELECT id, team FROM players WHERE id IN (?,?)", (home_ace, away_ace,))
+      membership = dict(cursor)
+    if membership[home_ace] != home_team:
+      return "Home ace is on the wrong team."
+    if membership[away_ace] != away_team:
+      return "Away ace is on the wrong team."
 
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute("SELECT DISTINCT week FROM maps WHERE week = ?", (week_number,))
@@ -566,7 +618,12 @@ def get_replay_pack(week, fakepath):
       lineups[team][set_number] = player
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT match_number, home_player, away_player FROM ace_matches WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT match_number, hp.name, ap.name "
+        "FROM ace_matches "
+        "JOIN players hp ON ace_matches.home_player = hp.id "
+        "JOIN players ap ON ace_matches.away_player = ap.id "
+        "WHERE week = ?", (week,))
     aces = dict((row[0], row[1:]) for row in cursor)
 
   buf = cStringIO.StringIO()

@@ -46,8 +46,8 @@ CREATE TABLE lineup (
 CREATE TABLE ace_matches (
   week INTEGER,
   match_number INTEGER,
-  home_player TEXT,
-  away_player TEXT,
+  home_player INTEGER,
+  away_player INTEGER,
   home_race TEXT,
   away_race TEXT,
   PRIMARY KEY (week, match_number)

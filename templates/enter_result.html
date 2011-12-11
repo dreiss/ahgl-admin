@@ -26,11 +26,23 @@
           | Replay: <input type="file" name="replay_{{setnum}}">
         {% endfor %}
         <li>
-          Home ace: <input type="text" name="home_ace"></input>
+          Home ace:
+            <select name="home_ace">
+              <option value="0">--</option>
+              {% for pnum, pname in home_aces %}
+                <option value="{{pnum}}">{{pname}}</option>
+              {% endfor %}
+            </select>
             <select name="home_ace_race">
             <option>T</option><option>Z</option><option>P</option><option>R</option>
             </select>
-          Away ace: <input type="text" name="away_ace"></input>
+          Away ace:
+            <select name="away_ace">
+              <option value="0">--</option>
+              {% for pnum, pname in away_aces %}
+                <option value="{{pnum}}">{{pname}}</option>
+              {% endfor %}
+            </select>
             <select name="away_ace_race">
             <option>T</option><option>Z</option><option>P</option><option>R</option>
             </select>
