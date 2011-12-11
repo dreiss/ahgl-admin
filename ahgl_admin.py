@@ -406,7 +406,6 @@ def show_result_week(week):
 
 
 @app.route("/enter-result")
-@require_auth
 def enter_result():
   week_number = 1
   try:
@@ -447,7 +446,6 @@ def enter_result():
 
 
 @app.route("/submit-result", methods=["POST"])
-@require_auth
 def submit_result():
   postdata = flask.request.form
 
