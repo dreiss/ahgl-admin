@@ -521,7 +521,9 @@ def show_result_week(week):
 
 @app.route("/enter-result")
 def enter_result():
-  week_number = 1
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT MAX(week) FROM maps")
+    week_number = max(1, list(cursor)[0][0]-1)
   try:
     week_number = int(flask.request.args.get("week"))
   except (ValueError, TypeError):
