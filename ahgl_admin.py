@@ -250,7 +250,9 @@ def show_lineup_week(week):
 @app.route("/enter-lineup")
 @require_auth
 def enter_lineup():
-  week_number = 1
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT MAX(week) FROM maps")
+    week_number = list(cursor)[0][0]
   try:
     week_number = int(flask.request.args.get("week"))
   except (ValueError, TypeError):
