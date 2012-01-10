@@ -14,3 +14,7 @@ INSERT INTO "lineup" VALUES(1,1,1,19,'P');
 INSERT INTO "lineup" VALUES(1,1,2,20,'Z');
 INSERT INTO "lineup" VALUES(1,1,3,21,'T');
 INSERT INTO "lineup" VALUES(1,1,4,22,'Z');
+INSERT INTO "referees" VALUES(1,6,'TwitterRef');
+INSERT INTO "referees" VALUES(1,8,'ZyngaRef');
+INSERT INTO "referees" VALUES(1,3,'FacebookRef');
+INSERT INTO "referees" VALUES(1,1,'AmazonRef');

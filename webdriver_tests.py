@@ -118,7 +118,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       wd.get(bu)
 
 
-    def enter_lineup(week, team, players):
+    def enter_lineup(week, team, players, ref):
       login(team)
       wd.find_element_by_link_text('Enter Lineup').click()
       wait_title('AHGL Lineup Entry')
@@ -129,6 +129,8 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       for (number, (name, race)) in enumerate(players):
         Select(css('select[name=player_%d]' % (number+1))).select_by_visible_text(name)
         Select(css('select[name=race_%d]' % (number+1))).select_by_visible_text(race)
+
+      css('input[name=referee]').send_keys(ref)
 
       css('input[type=submit]').submit()
       WebDriverWait(wd, 1).until(lambda w: w.title != 'AHGL Lineup Entry')
@@ -152,28 +154,32 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         ('xelnaga.195', 'Z'),
         ('ceaser.610', 'P'),
         ('arya.872', 'P'),
-        ])
+        ],
+        "TwitterRef")
 
       enter_lineup(1, 'Zynga', [
         ('ShamWOW.657', 'Z'),
         ('joolz.395', 'P'),
         ('Preposterous.925', 'Z'),
         ('Fredo.746', 'Z'),
-        ])
+        ],
+        "ZyngaRef")
 
       enter_lineup(1, 'Facebook', [
         ('JohnOldman.0', 'Z'),
         ('tstanke.0', 'P'),
         ('bingobango.0', 'Z'),
         ('icecreamboy.0', 'Z'),
-        ])
+        ],
+        "FacebookRef")
 
       enter_lineup(1, 'Amazon', [
         ('MuffinTopper.0', 'P'),
         ('Dasnor.0', 'Z'),
         ('SteelCurtain.0', 'T'),
         ('Skynet.0', 'Z'),
-        ])
+        ],
+        "AmazonRef")
 
     login('Twitter')
 
@@ -204,6 +210,15 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       'Suggested channel: ahgl-3')
     self.assertEqual(xpath(subhead_xpath_fmt % ('Match 4: Microsoft vs Google', 1)).text,
       'Suggested channel: ahgl-4')
+
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 1: Twitter vs Zynga', 2)).text,
+      'Referees: Facebook (FacebookRef) AND Dropbox (no ref)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 2: Facebook vs Dropbox', 2)).text,
+      'Referees: Twitter (TwitterRef) AND Zynga (ZyngaRef)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 3: Yelp vs Amazon', 2)).text,
+      'Referees: Microsoft (no ref) AND Google (no ref)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 4: Microsoft vs Google', 2)).text,
+      'Referees: Yelp (no ref) AND Amazon (AmazonRef)')
 
     wd.get(bu)
 

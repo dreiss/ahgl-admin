@@ -190,8 +190,11 @@ def show_lineup_week(week):
     teams = dict(cursor)
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT match_number, home_team, away_team FROM matches WHERE week = ?", (week,))
-    matches = dict((row[0], (row[1], row[2])) for row in cursor)
+    cursor.execute(
+        "SELECT match_number, home_team, away_team, "
+        "main_ref_team, backup_ref_team "
+        "FROM matches WHERE week = ?", (week,))
+    matches = dict((row[0], (row[1], row[2], row[3], row[4])) for row in cursor)
 
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute(
@@ -199,6 +202,11 @@ def show_lineup_week(week):
         "FROM maps JOIN mapnames ON mapid = mapnames.id "
         "WHERE week = ?", (week,))
     maps = dict((row[0], row[1]) for row in cursor)
+
+  refs = collections.defaultdict(lambda: "no ref")
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT team, referee_name FROM referees WHERE week = ?", (week,))
+    refs.update(cursor)
 
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
@@ -212,10 +220,13 @@ def show_lineup_week(week):
 
   # TODO: Jinja-ize this.
   lineup_displays = []
-  for (match, (home, away)) in sorted(matches.items()):
-    lineup_displays.append("<h2>Match %d: %s vs %s</h2><p>"
+  for (match, (home, away, ref1t, ref2t)) in sorted(matches.items()):
+    lineup_displays.append("<h2>Match %d: %s vs %s</h2>"
         % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
     lineup_displays.append("<h3>Suggested channel: ahgl-%d</h3>" % match)
+    lineup_displays.append("<h3>Referees: %s (%s) AND %s (%s)</h3>"
+        % tuple(cgi.escape(val) for val in (teams[ref1t], refs[ref1t], teams[ref2t], refs[ref2t])))
+    lineup_displays.append("<p>")
     if lineups[home] and lineups[away]:
       for setnum in range(1,5+1):
         mapname = maps[setnum]
@@ -316,6 +327,10 @@ def submit_lineup():
   if team_number != get_user_team():
     return "Can't submit for another team"
 
+  referee = postdata.get("referee")
+  if not referee:
+    return "No referee submitted"
+
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute("SELECT name FROM teams WHERE id = ?", (team_number,))
     if len(list(cursor)) != 1:
@@ -334,6 +349,12 @@ def submit_lineup():
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute("SELECT id FROM players WHERE team = ? AND active = 1", (team_number,))
     eligible_players = set([row[0] for row in cursor])
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "INSERT INTO referees(week, team, referee_name) "
+        "VALUES (?,?,?) "
+        , (week_number, team_number, referee))
 
   entered_players = set()
 

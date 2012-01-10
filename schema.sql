@@ -29,6 +29,8 @@ CREATE TABLE matches (
   match_number INTEGER,
   home_team INTEGER,
   away_team INTEGER,
+  main_ref_team INTEGER,
+  backup_ref_team INTEGER,
   PRIMARY KEY (week, match_number)
 );
 
@@ -46,6 +48,13 @@ CREATE TABLE lineup (
   player INTEGER,
   race TEXT,
   PRIMARY KEY (week, team, set_number)
+);
+
+CREATE TABLE referees (
+  week INTEGER,
+  team INTEGER,
+  referee_name TEXT,
+  PRIMARY KEY (week, team)
 );
 
 CREATE TABLE ace_matches (
