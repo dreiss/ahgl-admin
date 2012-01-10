@@ -78,6 +78,13 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         auth_key = list(cursor)[0][0]
       wd.get(bu + 'login/' + auth_key)
 
+    def login_admin():
+      with contextlib.closing(db_conn.cursor()) as cursor:
+        cursor.execute(
+            'SELECT auth_key FROM accounts WHERE team = -1')
+        auth_key = list(cursor)[0][0]
+      wd.get(bu + 'login/' + auth_key)
+
     wd.find_element_by_link_text('Enter Lineup').click()
     wait_title('No Account')
     wd.get(bu)
@@ -92,6 +99,23 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     wd.find_element_by_link_text('Enter Lineup').click()
     wait_title('No Account')
     wd.get(bu)
+
+    def enter_maps(week, mapnames):
+      login_admin()
+      wd.find_element_by_link_text('Enter Maps').click()
+      wait_title('AHGL Map Entry')
+
+      self.assertEqual(css('h1').text, 'AHGL Map Entry')
+      self.assertEqual(css('h2').text, 'Week %d' % week)
+      for number, mapname in enumerate(mapnames):
+        Select(css('select[name=map_%d]' % (number+1))).select_by_visible_text(mapname)
+
+      css('input[type=submit]').submit()
+      WebDriverWait(wd, 1).until(lambda w: w.title != 'AHGL Map Entry')
+
+      self.assertEqual(wd.title, 'Success')
+      wd.get(bu)
+
 
     def enter_lineup(week, team, players):
       login(team)
@@ -110,6 +134,16 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
 
       self.assertEqual(wd.title, 'Success')
       wd.get(bu)
+
+
+    enter_maps(1, [
+      "Xel'Naga Caverns",
+      "Tal'Darim Altar",
+      "Backwater Gulch",
+      "Metalopolis",
+      "Shattered Temple",
+      ])
+
 
     if not os.environ.get("TEST_SKIP_LINEUP"):
       enter_lineup(1, 'Twitter', [

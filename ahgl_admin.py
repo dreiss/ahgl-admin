@@ -84,6 +84,7 @@ def debug_page():
 @app.route("/")
 def home_page():
   return flask.render_template("home.html", links=dict(
+      enter_maps = flask.url_for(enter_maps.__name__),
       show_lineup = flask.url_for(show_lineup_select.__name__),
       enter_lineup = flask.url_for(enter_lineup.__name__),
       show_result = flask.url_for(show_result_select.__name__),
@@ -109,6 +110,63 @@ def login(auth_key):
 def logout():
   del flask.session["account"]
   return flask.redirect(flask.url_for(home_page.__name__))
+
+
+@app.route("/enter-maps")
+@require_auth
+@require_admin
+def enter_maps():
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT MAX(week) FROM maps")
+    week_number = (list(cursor)[0][0] or 0) + 1
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT id, mapname FROM mapnames")
+    map_pool = list(cursor)
+  return flask.render_template("enter_maps.html",
+      week_number = week_number,
+      num_sets = 5,
+      map_pool = map_pool,
+      submit_link = flask.url_for(submit_maps.__name__),
+      )
+
+
+@app.route("/submit-maps", methods=["POST"])
+@require_auth
+@require_admin
+def submit_maps():
+  postdata = flask.request.form
+
+  week_number = postdata.getlist("week")
+  if len(week_number) != 1 or not week_number[0]:
+    return "No value submitted for 'week'"
+  week_number = week_number[0]
+  try:
+    week_number = int(week_number)
+  except ValueError:
+    return "Invalid week"
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT COUNT(*) FROM maps WHERE week = ?", (week_number,))
+    if list(cursor) != [(0,)]:
+      return "Maps already submitted"
+
+  for setnum in range(1,5+1):
+    mapid = postdata.get("map_%d" % setnum)
+    if not mapid:
+      return "No value submitted for 'map_%d'" % setnum
+    try:
+      mapid = int(mapid)
+    except ValueError:
+      return "Invalid map"
+    with contextlib.closing(g.db.cursor()) as cursor:
+      cursor.execute(
+          "INSERT INTO maps(week, set_number, mapid) "
+          "VALUES (?,?,?) "
+          , (week_number, setnum, mapid))
+
+  g.db.commit()
+
+  return flask.render_template("success.html", item_type="Maps")
 
 
 @app.route("/show-lineup")
