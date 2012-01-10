@@ -19,6 +19,11 @@ CREATE TABLE players (
   name TEXT
 );
 
+CREATE TABLE mapnames (
+  id INTEGER PRIMARY KEY,
+  mapname TEXT
+);
+
 CREATE TABLE matches (
   week INTEGER,
   match_number INTEGER,
@@ -30,7 +35,7 @@ CREATE TABLE matches (
 CREATE TABLE maps (
   week INTEGER,
   set_number INTEGER,
-  mapname TEXT,
+  mapid INTEGER,
   PRIMARY KEY (week, set_number)
 );
 

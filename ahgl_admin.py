@@ -127,7 +127,10 @@ def show_lineup_week(week):
     matches = dict((row[0], (row[1], row[2])) for row in cursor)
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT set_number, mapname "
+        "FROM maps JOIN mapnames ON mapid = mapnames.id "
+        "WHERE week = ?", (week,))
     maps = dict((row[0], row[1]) for row in cursor)
 
   lineups = collections.defaultdict(dict)
@@ -187,7 +190,10 @@ def enter_lineup():
     pass
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week_number,))
+    cursor.execute(
+        "SELECT set_number, mapname "
+        "FROM maps JOIN mapnames ON mapid = mapnames.id "
+        "WHERE week = ?", (week_number,))
     maps = dict((row[0], row[1]) for row in cursor)
 
   team_number = get_user_team()
@@ -319,7 +325,10 @@ def show_result_week(week):
     matches = dict((row[0], (row[1], row[2])) for row in cursor)
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week,))
+    cursor.execute(
+        "SELECT set_number, mapname "
+        "FROM maps JOIN mapnames ON mapid = mapnames.id "
+        "WHERE week = ?", (week,))
     maps = dict((row[0], row[1]) for row in cursor)
 
   lineups = collections.defaultdict(dict)
@@ -418,7 +427,10 @@ def enter_result():
     matches = list(cursor)
 
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT set_number, mapname FROM maps WHERE week = ?", (week_number,))
+    cursor.execute(
+        "SELECT set_number, mapname "
+        "FROM maps JOIN mapnames ON mapid = mapnames.id "
+        "WHERE week = ?", (week_number,))
     maps = dict((row[0], row[1]) for row in cursor)
 
   extra_params = {}
