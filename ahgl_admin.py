@@ -49,6 +49,15 @@ def require_auth(func):
   return wrapper
 
 
+def require_admin(func):
+  @functools.wraps(func)
+  def wrapper(*args, **kwds):
+    if get_user_team() != -1:
+      return flask.render_template("no_admin.html")
+    return func(*args, **kwds)
+  return wrapper
+
+
 def get_user_team():
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute("SELECT team FROM accounts WHERE id = ?", (g.account,))
