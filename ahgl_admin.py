@@ -215,6 +215,7 @@ def show_lineup_week(week):
   for (match, (home, away)) in sorted(matches.items()):
     lineup_displays.append("<h2>Match %d: %s vs %s</h2><p>"
         % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
+    lineup_displays.append("<h3>Suggested channel: ahgl-%d</h3>" % match)
     if lineups[home] and lineups[away]:
       for setnum in range(1,5+1):
         mapname = maps[setnum]

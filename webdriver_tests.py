@@ -65,6 +65,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     def wait_title(val):
       WebDriverWait(wd, 1).until(lambda w: w.title == val)
     block_xpath_fmt = '//h2[text()="%s"]/following-sibling::p[1]'
+    subhead_xpath_fmt = '//h2[text()="%s"]/following-sibling::h3[%d]'
 
     wd.get(bu)
     self.assertEqual(css('h1').text, 'AHGL Admin Page')
@@ -194,6 +195,15 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         'NOT ENTERED <> LINEUP ENTERED')
     self.assertEqual(xpath(block_xpath_fmt % 'Match 4: Microsoft vs Google').text,
         'NOT ENTERED <> NOT ENTERED')
+
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 1: Twitter vs Zynga', 1)).text,
+      'Suggested channel: ahgl-1')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 2: Facebook vs Dropbox', 1)).text,
+      'Suggested channel: ahgl-2')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 3: Yelp vs Amazon', 1)).text,
+      'Suggested channel: ahgl-3')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 4: Microsoft vs Google', 1)).text,
+      'Suggested channel: ahgl-4')
 
     wd.get(bu)
 
