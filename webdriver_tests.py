@@ -212,12 +212,21 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
       'Suggested channel: ahgl-4')
 
     self.assertEqual(xpath(subhead_xpath_fmt % ('Match 1: Twitter vs Zynga', 2)).text,
-      'Referees: Facebook (FacebookRef) AND Dropbox (no ref)')
+      'Captains: Captain Foo AND Captain Bar')
     self.assertEqual(xpath(subhead_xpath_fmt % ('Match 2: Facebook vs Dropbox', 2)).text,
-      'Referees: Twitter (TwitterRef) AND Zynga (ZyngaRef)')
+      'Captains: Captain Baz AND Captain Drop')
     self.assertEqual(xpath(subhead_xpath_fmt % ('Match 3: Yelp vs Amazon', 2)).text,
-      'Referees: Microsoft (no ref) AND Google (no ref)')
+      'Captains: Captain Local AND Captain Jeff')
     self.assertEqual(xpath(subhead_xpath_fmt % ('Match 4: Microsoft vs Google', 2)).text,
+      'Captains: Captain Nato AND Captain Larry')
+
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 1: Twitter vs Zynga', 3)).text,
+      'Referees: Facebook (FacebookRef) AND Dropbox (no ref)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 2: Facebook vs Dropbox', 3)).text,
+      'Referees: Twitter (TwitterRef) AND Zynga (ZyngaRef)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 3: Yelp vs Amazon', 3)).text,
+      'Referees: Microsoft (no ref) AND Google (no ref)')
+    self.assertEqual(xpath(subhead_xpath_fmt % ('Match 4: Microsoft vs Google', 3)).text,
       'Referees: Yelp (no ref) AND Amazon (AmazonRef)')
 
     wd.get(bu)

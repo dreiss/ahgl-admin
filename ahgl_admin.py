@@ -185,9 +185,13 @@ def show_lineup_select():
 
 @app.route("/show-lineup/<int:week>")
 def show_lineup_week(week):
+  teams = {}
+  captains = {}
   with contextlib.closing(g.db.cursor()) as cursor:
-    cursor.execute("SELECT id, name FROM teams")
-    teams = dict(cursor)
+    cursor.execute("SELECT id, name, captain_info FROM teams")
+    for tid, name, captain in cursor:
+      teams[tid] = name
+      captains[tid] = captain
 
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute(
@@ -224,6 +228,8 @@ def show_lineup_week(week):
     lineup_displays.append("<h2>Match %d: %s vs %s</h2>"
         % (match, cgi.escape(teams[home]), cgi.escape(teams[away])))
     lineup_displays.append("<h3>Suggested channel: ahgl-%d</h3>" % match)
+    lineup_displays.append("<h3>Captains: %s AND %s</h3>"
+        % tuple(cgi.escape(val) for val in (captains[home], captains[away])))
     lineup_displays.append("<h3>Referees: %s (%s) AND %s (%s)</h3>"
         % tuple(cgi.escape(val) for val in (teams[ref1t], refs[ref1t], teams[ref2t], refs[ref2t])))
     lineup_displays.append("<p>")

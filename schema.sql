@@ -1,6 +1,7 @@
 CREATE TABLE teams (
   id INTEGER PRIMARY KEY,
-  name TEXT
+  name TEXT,
+  captain_info TEXT
 );
 
 CREATE TABLE accounts (
