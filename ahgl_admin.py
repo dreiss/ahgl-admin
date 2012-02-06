@@ -506,12 +506,16 @@ def show_result_week(week):
         <title>AHGL Result</title>
       </head>
       <body>
-        <h1>AHGL Result Week %d</h1>
-        <p><a href="/replay-pack/%d/ahgl_replays_week_%d.zip">Replay Pack</a></p>
-        %s
+        <h1>AHGL Result Week %(week)d</h1>
+        <p><a href="/replay-pack/%(week)d/ahgl_replays_season_%(season)s_week_%(week)d.zip">Replay Pack</a></p>
+        %(display)s
       </body>
     </html>
-  """ % (week, week, week, "".join(result_displays))).encode()])
+  """ % dict(
+    week = week,
+    season = app.config["SEASON"],
+    display = "".join(result_displays),
+    )).encode()])
 
 
 @app.route("/enter-result")
@@ -760,8 +764,8 @@ def get_replay_pack(week, fakepath):
         return re.sub("[^a-zA-Z0-9]", "", word)
       zfile.write(
         os.path.join(app.config["DATA_DIR"], replayhash + ".SC2Replay"),
-        "AHGLpre_Week-%d/Match-%d_%s-%s/%s-%s_%d_%s-%s.SC2Replay" % (
-          week, match, cleanit(teams[hteam]), cleanit(teams[ateam]), cleanit(teams[hteam]), cleanit(teams[ateam]), setnum, cleanit(hplayer), cleanit(aplayer)))
+        "AHGL_S%s_Week-%d/Match-%d_%s-%s/%s-%s_%d_%s-%s.SC2Replay" % (
+          app.config["SEASON"], week, match, cleanit(teams[hteam]), cleanit(teams[ateam]), cleanit(teams[hteam]), cleanit(teams[ateam]), setnum, cleanit(hplayer), cleanit(aplayer)))
 
   zfile.close()
 

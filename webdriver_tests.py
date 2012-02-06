@@ -39,6 +39,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     self.data_dir = tempfile.mkdtemp()
     ahgl_admin.app.debug = True  # TODO: drop
     ahgl_admin.app.config['DATA_DIR'] = self.data_dir
+    ahgl_admin.app.config['SEASON'] = '2'
     ahgl_admin.app.secret_key = 'AHGL'
     self.httpd = wsgiref.simple_server.make_server('', 0, ahgl_admin.app.wsgi_app)
     self.base_url = 'http://localhost:%d/' % self.httpd.server_address[1]
@@ -281,7 +282,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     with contextlib.closing(urllib2.urlopen(replay_pack_link)) as handle:
       replay_pack = handle.read()
     zfile = zipfile.ZipFile(cStringIO.StringIO(replay_pack))
-    with contextlib.closing(zfile.open('AHGLpre_Week-1/Match-1_Twitter-Zynga/Twitter-Zynga_1_implausible-ShamWOW.SC2Replay')) as handle:
+    with contextlib.closing(zfile.open('AHGL_S2_Week-1/Match-1_Twitter-Zynga/Twitter-Zynga_1_implausible-ShamWOW.SC2Replay')) as handle:
       self.assertEqual(hashlib.sha1(handle.read()).hexdigest(), TEST_REPLAY_SHA1)
 
     wd.get(bu)
