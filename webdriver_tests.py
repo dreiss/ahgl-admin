@@ -150,34 +150,34 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
 
     if not os.environ.get("TEST_SKIP_LINEUP"):
       enter_lineup(1, 'Twitter', [
-        ('implausible.931', 'P'),
-        ('xelnaga.195', 'Z'),
-        ('ceaser.610', 'P'),
-        ('arya.872', 'P'),
+        ('implausible', 'P'),
+        ('xelnaga', 'Z'),
+        ('ceaser', 'P'),
+        ('arya', 'P'),
         ],
         "TwitterRef")
 
       enter_lineup(1, 'Zynga', [
-        ('ShamWOW.657', 'Z'),
-        ('joolz.395', 'P'),
-        ('Preposterous.925', 'Z'),
-        ('Fredo.746', 'Z'),
+        ('ShamWOW', 'Z'),
+        ('joolz', 'P'),
+        ('Preposterous', 'Z'),
+        ('Fredo', 'Z'),
         ],
         "ZyngaRef")
 
       enter_lineup(1, 'Facebook', [
-        ('JohnOldman.0', 'Z'),
-        ('tstanke.0', 'P'),
-        ('bingobango.0', 'Z'),
-        ('icecreamboy.0', 'Z'),
+        ('JohnOldman', 'Z'),
+        ('tstanke', 'P'),
+        ('bingobango', 'Z'),
+        ('icecreamboy', 'Z'),
         ],
         "FacebookRef")
 
       enter_lineup(1, 'Amazon', [
-        ('MuffinTopper.0', 'P'),
-        ('Dasnor.0', 'Z'),
-        ('SteelCurtain.0', 'T'),
-        ('Skynet.0', 'Z'),
+        ('MuffinTopper', 'P'),
+        ('Dasnor', 'Z'),
+        ('SteelCurtain', 'T'),
+        ('Skynet', 'Z'),
         ],
         "AmazonRef")
 
@@ -192,7 +192,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         'implausible.931 (P) < Xel\'Naga Caverns > (Z) ShamWOW.657\n'
         'xelnaga.195 (Z) < Tal\'Darim Altar > (P) joolz.395\n'
         'ceaser.610 (P) < Backwater Gulch > (Z) Preposterous.925\n'
-        'arya.872 (P) < Metalopolis > (Z) Fredo.746\n'
+        'arya.COWARD (P) < Metalopolis > (Z) Fredo.746\n'
         'ACE (?) < Shattered Temple > (?) ACE'
         )
     self.assertEqual(xpath(block_xpath_fmt % 'Match 2: Facebook vs Dropbox').text,
@@ -260,7 +260,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
         'Game 1 (Xel\'Naga Caverns): implausible.931 (P) > (Z) ShamWOW.657 -- replay\n'
         'Game 2 (Tal\'Darim Altar): xelnaga.195 (Z) < (P) joolz.395 -- no replay\n'
         'Game 3 (Backwater Gulch): ceaser.610 (P) < (Z) Preposterous.925 -- no replay\n'
-        'Game 4 (Metalopolis): arya.872 (P) < (Z) Fredo.746 -- no replay\n'
+        'Game 4 (Metalopolis): arya.COWARD (P) < (Z) Fredo.746 -- no replay\n'
         'Game 5 (Shattered Temple): Not played'
         )
     self.assertEqual(xpath(block_xpath_fmt % 'Match 2: Facebook vs Dropbox').text,
@@ -281,7 +281,7 @@ class AhglAdminSiteBrowserTest(unittest.TestCase):
     with contextlib.closing(urllib2.urlopen(replay_pack_link)) as handle:
       replay_pack = handle.read()
     zfile = zipfile.ZipFile(cStringIO.StringIO(replay_pack))
-    with contextlib.closing(zfile.open('AHGLpre_Week-1/Match-1_Twitter-Zynga/Twitter-Zynga_1_implausible931-ShamWOW657.SC2Replay')) as handle:
+    with contextlib.closing(zfile.open('AHGLpre_Week-1/Match-1_Twitter-Zynga/Twitter-Zynga_1_implausible-ShamWOW.SC2Replay')) as handle:
       self.assertEqual(hashlib.sha1(handle.read()).hexdigest(), TEST_REPLAY_SHA1)
 
     wd.get(bu)

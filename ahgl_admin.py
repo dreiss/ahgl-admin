@@ -215,7 +215,7 @@ def show_lineup_week(week):
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute(
-        "SELECT l.team, set_number, p.name, race "
+        "SELECT l.team, set_number, p.name || '.' || IFNULL(p.char_code, 'COWARD'), race "
         "FROM lineup l JOIN players p on p.id = l.player "
         "WHERE week = ? "
         , (week,))
@@ -431,7 +431,7 @@ def show_result_week(week):
   lineups = collections.defaultdict(dict)
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute(
-        "SELECT l.team, set_number, p.name, race "
+        "SELECT l.team, set_number, p.name || '.' || IFNULL(p.char_code, 'COWARD'), race "
         "FROM lineup l JOIN players p on p.id = l.player "
         "WHERE week = ? "
         , (week,))
@@ -446,7 +446,10 @@ def show_result_week(week):
 
   with contextlib.closing(g.db.cursor()) as cursor:
     cursor.execute(
-        "SELECT match_number, hp.name, ap.name, home_race, away_race "
+        "SELECT match_number, "
+        "hp.name || '.' || IFNULL(hp.char_code, 'COWARD'), "
+        "ap.name || '.' || IFNULL(ap.char_code, 'COWARD'), "
+        "home_race, away_race "
         "FROM ace_matches "
         "JOIN players hp ON ace_matches.home_player = hp.id "
         "JOIN players ap ON ace_matches.away_player = ap.id "

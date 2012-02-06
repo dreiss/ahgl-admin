@@ -17,7 +17,8 @@ CREATE TABLE players (
   id INTEGER PRIMARY KEY,
   team INTEGER,
   active INTEGER,
-  name TEXT
+  name TEXT,
+  char_code TEXT
 );
 
 CREATE TABLE mapnames (
