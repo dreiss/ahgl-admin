@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AHGL Rosters</title>
+    <style type="text/css">
+      table, th, td {
+        border: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AHGL Rosters</h1>
+    <table>
+      <tr><th>Team</th><th>Player</th><th>Active</th><th>Replays</th></tr>
+      {% for team, pid, pname, replaypack_name, active in players %}
+        <tr>
+          <td>{{team}}</td>
+          <td>{{pname}}</td>
+          <td>{{active}}</td>
+          <td><a href="{{url_for("get_player_replays", player=pid, fakepath=replaypack_name)}}">replays</a></td>
+        </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>

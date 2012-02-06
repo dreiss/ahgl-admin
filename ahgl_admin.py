@@ -89,6 +89,7 @@ def home_page():
       enter_lineup = flask.url_for(enter_lineup.__name__),
       show_result = flask.url_for(show_result_select.__name__),
       enter_result = flask.url_for(enter_result.__name__),
+      view_rosters = flask.url_for(view_rosters.__name__),
     ))
 
 
@@ -696,6 +697,25 @@ def submit_result():
   return flask.render_template("success.html", item_type="Result")
 
 
+@app.route("/view-rosters")
+def view_rosters():
+  players = []
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "SELECT t.name, p.id, p.name, IFNULL(p.char_code, 'COWARD'), p.active "
+        "FROM players p JOIN teams t ON p.team = t.id "
+        "ORDER BY t.name, p.name "
+        )
+    for team, pid, name, char_code, active in cursor:
+      safe_name = re.sub(r'[^a-zA-Z0-9]', '', name)
+      full_name = name + "." + char_code
+      players.append((team, pid, full_name, "replays_" + safe_name + ".zip", active))
+
+  return flask.render_template("view_rosters.html",
+      players = players,
+      )
+
+
 @app.route("/replay/<rephash>/<fakepath>")
 @content_type("application/octet-stream")
 def get_replay(rephash, fakepath):
@@ -712,6 +732,56 @@ def get_replay(rephash, fakepath):
 
   with handle:
     return handle.read()
+
+
+@app.route("/player-replays/<int:player>/<fakepath>")
+@content_type("application/octet-stream")
+def get_player_replays(player, fakepath):
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute("SELECT name FROM players WHERE id = ?", (player,))
+    pname = list(cursor)[0][0]
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "SELECT m.week, m.match_number, l.set_number "
+        "FROM matches m JOIN lineup l ON m.week = l.week "
+          "AND (m.home_team = l.team OR m.away_team = l.team) "
+        "WHERE player = ? "
+        , (player,))
+    non_ace_wms = list(cursor)
+
+  with contextlib.closing(g.db.cursor()) as cursor:
+    cursor.execute(
+        "SELECT week, match_number, 5 "
+        "FROM ace_matches "
+        "WHERE home_player = ? OR away_player = ?"
+        , (player, player))
+    ace_wms = list(cursor)
+
+  prefix = "AHGL_S%s_%s" % (app.config["SEASON"], re.sub("[^a-zA-Z0-9]", "", pname))
+
+  buf = cStringIO.StringIO()
+  zfile = zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED)
+
+  for w,m,s in sorted(non_ace_wms + ace_wms):
+    with contextlib.closing(g.db.cursor()) as cursor:
+      cursor.execute(
+          "SELECT replay_hash "
+          "FROM set_results "
+          "WHERE week = ? AND match_number = ? AND set_number = ? "
+          , (w,m,s))
+      hashlist = list(cursor)
+      if not hashlist:
+        # Player was in a lineup, but game was not played.
+        continue
+      replayhash = hashlist[0][0]
+      zfile.write(
+        os.path.join(app.config["DATA_DIR"], replayhash + ".SC2Replay"),
+        prefix + "/Week%d-Set%d.SC2Replay" % (w, s))
+
+  zfile.close()
+
+  return buf.getvalue()
 
 
 @app.route("/replay-pack/<int:week>/<fakepath>")
